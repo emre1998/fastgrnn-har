@@ -32,7 +32,7 @@ reference at **100% agreement** across 3,399 test windows.
                                                      scale            (AVR + MSP430)
 ```
 
-See [`paper/en/main.pdf`](paper/en/fastgrnn-har-en.pdf) for the full write-up,
+See [`paper/en/fastgrnn-har-en.pdf`](paper/en/fastgrnn-har-en.pdf) for the full write-up,
 including a deployable LUT recipe for multiplier-less MCUs and a
 characterization of the ~2 s recurrent warm-up latency.
 
