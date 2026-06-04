@@ -146,4 +146,4 @@ under the dataset's original UCI Machine Learning Repository terms.
 
 ## Contact
 
-Emre Can Kızılateş — `kizilatesemrecan [at] gmail [dot] com`
+Emre Can Kızılateş — `kizilatesemrecan@gmail.com`
