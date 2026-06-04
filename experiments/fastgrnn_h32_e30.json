@@ -1,0 +1,20 @@
+{
+  "model": "FastGRNN",
+  "hidden_size": 32,
+  "epochs": 30,
+  "lr": 0.001,
+  "n_params": 1384,
+  "test_accuracy": 0.8450,
+  "test_macro_f1": 0.8332,
+  "test_loss": 0.4284,
+  "per_class_f1": {
+    "WALKING": 0.775,
+    "UPSTAIRS": 0.717,
+    "DOWNSTAIRS": 0.785,
+    "SITTING": 0.860,
+    "STANDING": 0.865,
+    "LAYING": 0.996
+  },
+  "learned_zeta": 0.4950,
+  "learned_nu": 0.4819
+}

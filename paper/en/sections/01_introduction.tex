@@ -1,0 +1,126 @@
+\section{Introduction}
+\label{sec:intro}
+
+\subsection{Motivation: Scaling Down When Silicon Will Not Scale Up}
+
+The last decade of machine learning has been characterized by a
+clear and consistent assumption: that the appropriate response to a
+hard problem is a larger model trained on a larger accelerator with
+a larger memory budget. This trajectory has produced spectacular
+results in language, vision, and multimodal
+generation~\cite{patterson2021carbon}. It has also imposed energy,
+carbon, and supply-chain costs that are now visible at a
+macroeconomic scale: a multi-year global shortage of leading-edge
+semiconductors disrupted the automotive, consumer electronics, and
+medical-device industries between 2020 and
+2024~\cite{burkacky2022chipshortage,khan2021chipshortage}, and the
+energy footprint of always-online inference is large and growing
+faster than supply~\cite{strubell2019energy,patterson2021carbon}.
+
+Against this backdrop, a complementary research agenda has gained
+new urgency. Rather than asking what new accelerator a model
+requires, this agenda asks what models can run on the silicon that
+is already in mass production, already shipping in tens of billions
+of units per year, and already affordable in single-digit-dollar
+unit cost: the 8-bit and 16-bit microcontrollers (MCUs) that
+populate wearables, sensors, smart appliances, automotive
+sub-systems, and industrial telemetry endpoints. This is the
+``tinyML'' regime~\cite{banbury2021mlperf}, and it is
+infrastructure-agnostic in a way that GPU-scale inference is not.
+
+\subsection{The Bare-Metal MCU Class}
+
+Most published tinyML deployments target ARM Cortex-M class devices
+that expose hundreds of kilobytes of SRAM, hardware floating-point
+units, single-cycle multipliers, and vendor-optimized neural-network
+kernels~\cite{lai2018cmsisnn,david2021tflitemicro,lin2020mcunet}.
+These platforms are inexpensive but still relatively powerful.
+At the other end of the deployable-silicon spectrum sit the
+\emph{bare-metal} MCUs studied in this paper:
+\begin{itemize}
+\item the 8-bit \arduino{} (ATmega328P), with 32~KB Flash, 2~KB
+SRAM, a hardware $8{\times}8$ multiplier, and no floating-point unit;
+\item the 16-bit \msp{}, with 16~KB Flash, 512~B SRAM, and
+\emph{no hardware multiplier of any kind}. Every multiplication
+on this device is software-emulated.
+\end{itemize}
+These two parts are representative of the low end of the available
+silicon supply and remain in active production at unit costs an
+order of magnitude below any ARM Cortex-M target. If a recurrent
+network can be made to run in real time on the \msp{}, then the same
+network can be made to run on essentially any commodity
+microcontroller in production today.
+
+\subsection{Why Recurrent Networks, and Why \fastgrnn{}}
+
+Human activity recognition (HAR) from a wrist- or waist-mounted
+inertial sensor is a canonical streaming-classification problem
+with low input dimensionality (three accelerometer channels), low
+sampling rate (50~Hz), and a small number of output classes (six)
+\cite{anguita2013public,reyes2015transition}. It is therefore an
+ideal benchmark for the bare-metal MCU class: simple enough to fit,
+but temporal enough that a recurrent treatment outperforms a
+windowed feedforward baseline.
+
+\fastgrnn{}~\cite{kusupati2018fastgrnn} is a gated recurrent cell
+designed explicitly for resource-constrained inference. It combines
+three orthogonal compression mechanisms -- low-rank weight
+factorization, iterative hard-thresholding (IHT)
+sparsity~\cite{blumensath2009iht}, and Q15 fixed-point
+quantization~\cite{jacob2018integer,han2016deepcompression} -- and
+has been reported to match LSTM~\cite{hochreiter1997lstm} accuracy
+at a fraction of the parameter count. The original paper, however,
+does not provide a public bare-metal reference implementation on a
+multiplier-less target, nor does it characterize streaming-mode
+behavior.
+
+\subsection{Contributions}
+
+This paper delivers an end-to-end open-source reproduction of
+\fastgrnn{} for HAR on bare-metal MCUs and reports three
+contributions beyond the original paper:
+
+\begin{itemize}
+\item \textbf{Cross-platform deterministic inference.} A single
+portable C source compiles on both the 8-bit \arduino{} and the
+16-bit \msp{}, producing \emph{bit-equivalent} hidden-state
+trajectories and 100\% prediction agreement with a PyTorch
+reference across 3{,}399 test windows. This level of
+hardware-independent reproducibility is itself an artifact worth
+preserving for safety-relevant deployments.
+
+\item \textbf{A deployable look-up-table recipe for multiplier-less
+targets.} A 256-entry sigmoid/tanh look-up table over the input
+range $[-8, +8]$ accelerates full-window inference on the \msp{} by
+\textbf{30.5$\times$} (54~s $\rightarrow$ 1.8~s), turning what was
+a non-real-time deployment into a comfortable 50~Hz streaming
+target. The recipe is independent of \fastgrnn{} and applies to any
+recurrent cell that relies on $\sigma$ or $\tanh$ activations.
+
+\item \textbf{Characterization of recurrent warm-up latency.} We
+observe that prediction stability requires approximately 2~seconds
+($\sim$100 samples at 50~Hz) of recurrent hidden-state evolution
+regardless of deployment target. This is a property of the
+recurrent dynamics, not the underlying hardware, and bounds the
+end-to-end user-facing response time of any \fastgrnn{}-class HAR
+system in a way that is not discussed in the original paper.
+\end{itemize}
+
+\noindent\textbf{Code and reproducibility.} All source code,
+trained models, exported Q15 weights, per-experiment logs, and
+deployment binaries are publicly available
+at~\url{https://github.com/emre1998/fastgrnn-har} under the
+Apache License 2.0. The complete reproduction takes approximately
+two hours of CPU training plus five minutes of MCU deployment.
+
+\subsection{Roadmap}
+
+Section~\ref{sec:related} surveys related compact-RNN and edge-ML
+work. Section~\ref{sec:method} formalizes the \fastgrnn{} cell and
+the low-rank, sparse, quantized (L-S-Q) compression pipeline.
+Section~\ref{sec:setup} describes the experimental setup;
+Section~\ref{sec:results} reports accuracy, deployment footprint,
+and real-time streaming performance.
+Section~\ref{sec:discussion} analyzes the warm-up phenomenon,
+discusses cross-platform determinism, and lists limitations.
+Section~\ref{sec:conclusion} concludes.

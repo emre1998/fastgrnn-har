@@ -1,0 +1,15 @@
+{
+  "model": "MLP",
+  "n_params": 12518,
+  "test_accuracy": 0.8547,
+  "test_macro_f1": 0.8473,
+  "test_loss": 0.4885,
+  "per_class_f1": {
+    "WALKING": 0.843,
+    "UPSTAIRS": 0.731,
+    "DOWNSTAIRS": 0.877,
+    "SITTING": 0.823,
+    "STANDING": 0.810,
+    "LAYING": 1.000
+  }
+}

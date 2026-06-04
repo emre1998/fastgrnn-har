@@ -1,0 +1,57 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.ipynb_checkpoints/
+
+# Data — too large for git, instructions in README
+data/
+*.npz
+*.npy
+
+# Trained checkpoints — too large; release a single deployed weights file
+# via GitHub Release instead.
+*.pt
+*.pth
+
+# LaTeX build artifacts (keep .tex, .bib, figures/*.pdf, and main.pdf)
+paper/**/*.aux
+paper/**/*.bbl
+paper/**/*.blg
+paper/**/*.fdb_latexmk
+paper/**/*.fls
+paper/**/*.log
+paper/**/*.out
+paper/**/*.synctex.gz
+paper/**/*.toc
+
+# OS / editor
+.DS_Store
+Thumbs.db
+*.swp
+.vscode/
+.idea/
+
+# Arduino / CCS build outputs
+*.elf
+*.hex
+*.bin
+*.o
+Debug/
+Release/
+.cproject
+.project
+.metadata/
+*.launch
+
+# Misc
+*.tmp
+*.bak
+*.log
+
+# CCS / Theia debug session noise (workspace lock files, output traces)
+true
+contract.md

@@ -1,0 +1,31 @@
+{
+  "model": "FastGRNN (low-rank)",
+  "hidden_size": 16,
+  "r_w": 2,
+  "r_u": 8,
+  "epochs_planned": 100,
+  "epochs_run": 100,
+  "best_epoch": 97,
+  "patience": 30,
+  "lr": 0.001,
+  "n_params": 430,
+  "test_accuracy": 0.9023242130038247,
+  "test_macro_f1": 0.9009306471312026,
+  "test_loss": 0.3294062607733423,
+  "per_class_f1": {
+    "WALKING": 0.9000951474785919,
+    "UPSTAIRS": 0.8470588235294118,
+    "DOWNSTAIRS": 0.9280742459396751,
+    "SITTING": 0.8717948717948718,
+    "STANDING": 0.858560794044665,
+    "LAYING": 1.0
+  },
+  "learned_zeta": 0.5766679644584656,
+  "learned_nu": 0.5409224033355713,
+  "best_val_f1": 0.9049399428811143,
+  "baseline_mlp": {
+    "accuracy": 0.8547,
+    "macro_f1": 0.8473,
+    "n_params": 12518
+  }
+}

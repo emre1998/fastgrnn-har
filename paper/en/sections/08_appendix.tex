@@ -1,0 +1,147 @@
+\section{Hyperparameters}
+\label{app:hyper}
+
+Table~\ref{tab:hyper} lists the full hyperparameter set used to
+produce the deployed model. All values are unchanged across the
+five training seeds.
+
+\begin{table}[h]
+\centering
+\caption{Training and deployment hyperparameters for the deployed
+\fastgrnn{} model.}
+\label{tab:hyper}
+\begin{tabular}{lr}
+\toprule
+Parameter & Value \\
+\midrule
+Hidden size $H$                  & 16 \\
+Input dimensionality $d$         & 3 (tri-axial accel.) \\
+Window length $T$                & 128 samples (2.56~s) \\
+Sample rate                      & 50~Hz \\
+Output classes                   & 6 \\
+\midrule
+Recurrent rank $r_u$             & 8 \\
+Input rank $r_w$                 & 2 \\
+Target sparsity $s$              & 0.5 (283 nonzero / 566) \\
+Sparsity ramp epochs             & 50 (cubic schedule) \\
+Frozen-mask fine-tune epochs     & 50 \\
+\midrule
+Optimizer                        & Adam \\
+Learning rate $\eta$             & $10^{-3}$ \\
+Batch size                       & 64 \\
+Total epochs                     & 100 \\
+Random seeds                     & $\{0, 1, 2, 3, 4\}$ \\
+\midrule
+Activation function              & sigmoid, tanh \\
+LUT size                         & 256 entries each \\
+LUT input domain                 & $[-8, +8]$ \\
+Weight quantization              & per-tensor Q15 \\
+Activation quantization          & per-tensor Q15 + calibration \\
+Calibration mini-batches         & 5 \\
+Calibration headroom             & 10\% \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Q15 Quantization Implementation}
+\label{app:q15}
+
+The per-tensor Q15 quantization step used in
+Section~\ref{sec:method:q15} is a one-line operation per tensor. In
+Python:
+
+\begin{verbatim}
+def to_q15(W: np.ndarray, scale: float) -> np.ndarray:
+    return (W / scale).round() \
+                      .clip(-32768, 32767) \
+                      .astype(np.int16)
+\end{verbatim}
+
+The per-tensor scale is chosen as
+\[
+s_\ell = \max_{ij}\bigl|W^{(\ell)}_{ij}\bigr| \,\big/\, 32767,
+\]
+which is the largest scale that keeps every quantized entry inside
+the signed 16-bit range. The same expression is used for both the
+recurrent weight factors $\mathbf{W}_1, \mathbf{W}_2,
+\mathbf{U}_1, \mathbf{U}_2$ and the classifier head. At runtime, the
+dequantized value is computed as
+
+\begin{verbatim}
+float w = (float)W_q15[i] * scale;
+\end{verbatim}
+
+The runtime cost per dequantize is one int-to-float conversion and
+one multiply; both are cheap on the AVR and, with the LUT
+intercepting the activations, manageable on the multiplier-less
+\msp{}.
+
+\section{LUT Generation Algorithm}
+\label{app:lut}
+
+The sigmoid and tanh look-up tables of Section~\ref{sec:method:lut}
+are pre-computed offline in Python and emitted as a C header:
+
+\begin{verbatim}
+LUT_SIZE     = 256
+INPUT_MIN    = -8.0
+INPUT_MAX    =  8.0
+BUCKET_WIDTH = (INPUT_MAX - INPUT_MIN) / LUT_SIZE
+
+sigmoid_lut = [
+    1.0 / (1.0 + math.exp(-(INPUT_MIN
+            + (i + 0.5) * BUCKET_WIDTH)))
+    for i in range(LUT_SIZE)
+]
+tanh_lut = [
+    math.tanh(INPUT_MIN + (i + 0.5) * BUCKET_WIDTH)
+    for i in range(LUT_SIZE)
+]
+\end{verbatim}
+
+Each entry stores the value of the activation at the
+\emph{center} of its bucket (the $(i + 0.5)$ offset), which is
+the maximum-likelihood estimate for a uniformly distributed
+sub-bucket input and avoids a half-bucket bias. The runtime lookup is
+
+\begin{verbatim}
+static inline float lut_eval(const float *lut, float x) {
+    if (x <= LUT_INPUT_MIN) return lut[0];
+    if (x >= LUT_INPUT_MAX) return lut[LUT_SIZE - 1];
+    int idx = (int)((x - LUT_INPUT_MIN) * LUT_INPUT_SCALE);
+    return lut[idx];
+}
+\end{verbatim}
+
+with \texttt{LUT\_INPUT\_SCALE = 1 / BUCKET\_WIDTH}. The two tables
+together occupy 2~KB of Flash; together they eliminate every
+\texttt{expf} and \texttt{tanhf} call from the runtime.
+
+\section{MSP430 I\textsuperscript{2}C Bring-Up}
+\label{app:hw}
+
+Live MPU-6050 read-out on the \msp{} uses the USCI\_B0 peripheral
+in I\textsuperscript{2}C master mode with the standard pin
+assignment (P1.6~$=$~SCL, P1.7~$=$~SDA). Two practical issues are
+worth recording for future readers:
+
+\begin{itemize}
+\item \textbf{J5 jumper removal.} The MSP-EXP430G2 LaunchPad
+multiplexes the on-board green LED with P1.6. The J5 jumper must
+be physically removed before any I\textsuperscript{2}C
+communication; otherwise SCL is loaded by the LED and the bus
+sits below the I\textsuperscript{2}C high-level threshold.
+
+\item \textbf{Bus-busy recovery.} The USCI\_B0 peripheral can latch
+into a \texttt{UCSCLLOW + UCBBUSY} state if power is removed
+mid-transfer; the conventional 9-clock recovery sequence
+(toggle SCL nine times with SDA released, then STOP) restores the
+bus. A GPIO-level health check at boot
+(\texttt{P1IN \& (BIT6|BIT7)} should be \texttt{0xC0}) detects the
+condition before the I\textsuperscript{2}C state machine is engaged.
+\end{itemize}
+
+These two items consumed approximately one day of bring-up time
+and are not documented in the standard MSP430 application
+notes~\cite{ti_msp430}. They are included here in case they save
+the next reader the same day.

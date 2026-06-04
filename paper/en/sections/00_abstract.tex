@@ -1,0 +1,38 @@
+\begin{abstract}
+The dominant trajectory of modern machine learning has been to
+scale \emph{up}: larger models, larger accelerators, larger memory
+budgets. Yet a multi-year global semiconductor supply
+constraint~\cite{burkacky2022chipshortage,khan2021chipshortage} and
+the growing energy and carbon cost of always-online
+inference~\cite{strubell2019energy,patterson2021carbon} expose the
+fragility of this trajectory and motivate the opposite direction:
+\emph{refactoring} AI and ML algorithms to fit the small,
+ubiquitous microcontrollers that are already in mass production in
+wearables, sensors, and edge appliances. This
+paper is a study in that direction. We present an end-to-end
+open-source reproduction of
+\fastgrnn{}~\cite{kusupati2018fastgrnn}, a compact gated recurrent
+cell, deployed on two bare-metal targets representative of the
+low end of the available silicon supply: the 8-bit \arduino{}
+(ATmega328P) and the 16-bit \msp{} (no hardware multiplier;
+16~KB Flash; 512~B SRAM). Our compression pipeline combines
+low-rank weight factorization, iterative hard-thresholding
+sparsity, and per-tensor Q15 post-training quantization with
+explicit activation calibration. The deployed model occupies
+\textbf{566~bytes of weights}, achieves \textbf{macro F1 $=$ 0.918}
+on the \hapt{} benchmark, and matches a PyTorch reference at
+\textbf{100\% prediction agreement} across 3{,}399 test windows.
+Both platforms sustain \textbf{real-time 50~Hz streaming
+inference} (9.21~ms per sample on Arduino; 13~ms on MSP430), where
+a 256-entry sigmoid/tanh look-up table delivers a
+\textbf{30.5$\times$ speedup} on the multiplier-less MSP430.
+Three contributions extend the original \fastgrnn{} paper:
+(i) cross-platform bit-equivalent deterministic inference;
+(ii) characterization of a $\sim$2~s recurrent warm-up latency that
+bounds end-to-end response time; and (iii) a deployable look-up-table
+recipe for multiplier-less embedded targets. Our
+results suggest that compact recurrent architectures, combined
+with calibrated quantization and look-up-table activations, can
+enable real-time on-device inference on resource-constrained
+microcontrollers without specialized accelerators.
+\end{abstract}

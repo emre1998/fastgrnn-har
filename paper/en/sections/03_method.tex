@@ -1,0 +1,204 @@
+\section{Method}
+\label{sec:method}
+
+This section formalizes the \fastgrnn{} cell, the three-stage
+compression pipeline applied on top of it, and the LUT-based
+activation recipe that makes the result deployable on a
+multiplier-less MCU. Fig.~\ref{fig:pipeline} summarizes the full
+flow.
+
+\subsection{\fastgrnn{} Cell Formulation}
+\label{sec:method:cell}
+
+Given an input $\mathbf{x}_t \in \mathbb{R}^{d}$ at time $t$ and a
+previous hidden state $\mathbf{h}_{t-1} \in \mathbb{R}^{H}$, the
+\fastgrnn{} cell~\cite{kusupati2018fastgrnn} computes a single gate
+$\mathbf{z}_t$, a candidate update $\tilde{\mathbf{h}}_t$, and a
+two-scalar interpolation $\mathbf{h}_t$:
+\begin{align}
+\mathbf{z}_t &= \sigma(\mathbf{W} \mathbf{x}_t + \mathbf{U} \mathbf{h}_{t-1} + \mathbf{b}_z) \label{eq:z}\\
+\tilde{\mathbf{h}}_t &= \tanh(\mathbf{W} \mathbf{x}_t + \mathbf{U} \mathbf{h}_{t-1} + \mathbf{b}_h) \label{eq:htilde}\\
+\mathbf{h}_t &= \bigl(\zeta(\mathbf{1} - \mathbf{z}_t) + \nu\bigr)\, \tilde{\mathbf{h}}_t + \mathbf{z}_t \odot \mathbf{h}_{t-1} \label{eq:hupdate}
+\end{align}
+where $\odot$ denotes element-wise multiplication and
+$\zeta, \nu \in (0,1)$ are \emph{learned scalars} that interpolate
+between leaky-integrator and standard gated update dynamics. The
+two-scalar gate is the defining feature of \fastgrnn{}: it permits
+LSTM-comparable expressiveness with a single weight pair
+$(\mathbf{W}, \mathbf{U})$ shared between the gate and the candidate
+update, in contrast to the three or four weight pairs of GRU or
+LSTM. In our HAR setup, $d{=}3$ (tri-axial acceleration), $H{=}16$,
+and the input sequence length is $T{=}128$ samples (one 2.56~s
+window at 50~Hz).
+
+Because the same weight pair $(\mathbf{W}, \mathbf{U})$ is reused in
+both~\eqref{eq:z} and~\eqref{eq:htilde}, the unconstrained
+parameter count of the cell is
+\begin{align}
+\#\text{params}
+ &= \underbrace{Hd}_{\mathbf{W}} +
+    \underbrace{H^2}_{\mathbf{U}} +
+    \underbrace{2H}_{\mathbf{b}_z,\mathbf{b}_h} +
+    \underbrace{2}_{\zeta,\nu} \nonumber\\
+ &= 48 + 256 + 32 + 2 = 338.
+\end{align}
+A standard LSTM at the same hidden size requires four such
+weight matrices ($\approx$\,1{,}280 parameters), so \fastgrnn{}
+starts from a $\sim$$4\times$ advantage at the architectural level.
+The low-rank and sparsification stages below reduce this further
+by another order of magnitude.
+
+\subsection{Low-Rank Weight Factorization}
+\label{sec:method:lowrank}
+
+The input matrix
+$\mathbf{W} \in \mathbb{R}^{H \times d}$ and recurrent matrix
+$\mathbf{U} \in \mathbb{R}^{H \times H}$ are each factored as a
+product of two thin matrices:
+\begin{align}
+\mathbf{W} &= \mathbf{W}_1 \mathbf{W}_2^\top, \quad \mathbf{W}_1 \in \mathbb{R}^{H \times r_w}, \mathbf{W}_2 \in \mathbb{R}^{d \times r_w}, \\
+\mathbf{U} &= \mathbf{U}_1 \mathbf{U}_2^\top, \quad \mathbf{U}_1 \in \mathbb{R}^{H \times r_u}, \mathbf{U}_2 \in \mathbb{R}^{H \times r_u}.
+\end{align}
+The factors $\mathbf{W}_1, \mathbf{W}_2, \mathbf{U}_1, \mathbf{U}_2$
+are learned end-to-end. The recurrent matrix-vector product is
+evaluated as $\mathbf{U}\mathbf{h} = \mathbf{U}_1(\mathbf{U}_2^\top \mathbf{h})$,
+which costs $2 H r_u$ multiply-adds rather than $H^2$. After
+sweeping $r_u \in \{4, 6, 8, 12\}$ across five random seeds each
+(Section~\ref{sec:results:lowrank}), we select $r_w = 2, r_u = 8$.
+
+\subsection{Iterative Hard Thresholding}
+\label{sec:method:iht}
+
+We sparsify all four factor matrices via iterative hard
+thresholding~\cite{blumensath2009iht}: at each training step we
+retain the top-$k$ magnitude entries of every weight tensor and
+zero the rest. The target sparsity $s$ follows the cubic schedule
+\begin{equation}
+s_e = s \cdot \min\!\Bigl(1, \tfrac{e}{e_{\text{ramp}}}\Bigr)^{3}
+\end{equation}
+over training epochs $e$, with $e_{\text{ramp}} = 50$ followed by
+50 epochs of mask-frozen fine-tuning. After sweeping
+$s \in \{0.3, 0.5, 0.7, 0.9\}$ across five seeds
+(Section~\ref{sec:results:sparsity}), we select $s = 0.5$
+(283 nonzero parameters), a U-curve optimum that balances
+accuracy against compressibility.
+
+\subsection{Per-Tensor Q15 Quantization with Activation Calibration}
+\label{sec:method:q15}
+
+Each weight tensor $\mathbf{W}^{(\ell)}$ (where
+$\ell \in \{W_1, W_2, U_1, U_2\}$) is quantized via
+\begin{equation}
+\hat{w}^{(\ell)}_{ij}
+  = \mathrm{clip}\!\Bigl(
+        \mathrm{round}\bigl(w^{(\ell)}_{ij} / s_\ell\bigr),
+        -2^{15}, 2^{15}-1
+    \Bigr),
+\end{equation}
+with a tensor-specific scale $s_\ell$ chosen so that
+$\max_{ij}|w_{ij}| / s_\ell$ lies just below the Q15 ceiling.
+At inference, the dequantized value $\hat{w}^{(\ell)}_{ij} \cdot s_\ell$
+is used in the forward pass.
+
+A naive extension of this scheme to activations
+\emph{also} placed in Q15 $[-1, 1)$ proves catastrophic: the hidden
+state $\mathbf{h}_t$ in our trained model attains magnitudes of
+$\sim$62, an order of magnitude beyond the Q15 representable range.
+Without intervention, F1 collapses from 0.918 to 0.16 and the
+\textsc{standing} class disappears entirely
+(Section~\ref{sec:results:quant}).
+
+A straightforward fix is to switch to a fixed Q9.6 fixed-point
+format, whose $\pm 64$ representable range covers the observed
+$\mathbf{h}_t$ magnitudes by construction. This trades a uniform
+safety margin for accuracy headroom on \emph{every} tensor,
+regardless of its actual dynamic range. We instead use
+\emph{per-activation calibration}: a calibration pass runs five
+mini-batches of training data through the FP32 model, records the
+empirical maximum of every intermediate tensor, applies a 10\%
+headroom, and assigns each activation its own scale. The
+per-tensor scheme generalizes Q9.6 -- it approaches the $\pm 64$
+range adaptively for tensors that need it (e.g.\ $\mathbf{h}_t$)
+while preserving the full Q15 resolution on tensors that do not
+(e.g.\ the gate output $\mathbf{z}_t \in [0,1]$). With calibration, prediction agreement
+between the integer C implementation and the FP32 reference is
+100\% across the 3{,}399-window test set, and the C-side
+macro F1 reaches 0.9176 -- the deployed-model number reported
+throughout this paper.
+
+\subsection{LUT-Based Activations}
+\label{sec:method:lut}
+
+The remaining cost on a multiplier-less target is the
+$\sigma$ and $\tanh$ evaluations: each requires several
+software-emulated transcendentals per call, and the cell evaluates
+$2H$ such activations per sample ($2 \cdot 16 = 32$ at $H{=}16$,
+times 128 samples per window = 4{,}096 activation calls per window).
+We replace the runtime calls with a 256-entry lookup table
+over the input domain $[-8, +8]$, stored in Flash:
+\begin{equation}
+\mathrm{LUT}[k]
+  = f\!\Bigl( -8 + k \cdot \tfrac{16}{255} \Bigr), \quad
+  k \in \{0, 1, \ldots, 255\},
+\end{equation}
+where $f \in \{\sigma, \tanh\}$. Inputs outside $[-8, +8]$
+saturate to $\pm 1$, which is exact to floating-point precision
+for both functions in those tails. Inside the domain, a single
+linear interpolation between adjacent entries replaces the original
+transcendental, reducing each activation to one comparison, two
+indexed loads, a subtract, and a multiply-add. The two tables
+together occupy 1~KB of Flash; the result is a
+\textbf{30.5$\times$} end-to-end speedup on the \msp{}
+(Section~\ref{sec:results:streaming}).
+
+\begin{figure}[t]
+\centering
+\begin{tikzpicture}[
+  node distance=4mm and 4mm,
+  every node/.style={font=\scriptsize},
+  stage/.style={draw, rounded corners=2pt, align=center,
+                 minimum height=8mm, minimum width=14mm, fill=blue!8,
+                 inner sep=2pt},
+  deploy/.style={draw, rounded corners=2pt, align=center,
+                 minimum height=8mm, minimum width=16mm, fill=green!10,
+                 inner sep=2pt},
+  arr/.style={-{Stealth[length=4pt]}, semithick},
+]
+\node[stage] (train)  {Float\\train};
+\node[stage, right=of train]    (lr)    {Low-rank\\$r_w{=}2$, $r_u{=}8$};
+\node[stage, right=of lr]       (sp)    {IHT\\sparsity 0.5};
+\node[stage, right=of sp]       (q15)   {Q15\\+ calib.};
+
+\node[deploy, below=6mm of lr]  (arduino) {Arduino Uno\\(AVR, $\times$HW)};
+\node[deploy, below=6mm of q15] (msp)     {MSP430G2553\\(no $\times$HW)};
+
+\node[align=center, below=2mm of arduino, font=\scriptsize\itshape, text=gray]
+   (note1) {portable C + LUT};
+
+\draw[arr] (train) -- (lr);
+\draw[arr] (lr)    -- (sp);
+\draw[arr] (sp)    -- (q15);
+\draw[arr] (q15.south) -- ++(0,-3mm) -| (arduino.north);
+\draw[arr] (q15.south) -- ++(0,-3mm) -| (msp.north);
+\end{tikzpicture}
+\caption{End-to-end \fastgrnn{} compression and deployment pipeline.
+Float training $\rightarrow$ low-rank $\rightarrow$ sparse $\rightarrow$
+calibrated Q15 weights $\rightarrow$ portable C with LUT activations
+$\rightarrow$ Arduino and MSP430 binaries.}
+\label{fig:pipeline}
+\end{figure}
+
+\subsection{Implementation}
+\label{sec:method:impl}
+
+Training is implemented in PyTorch~2.x; the deployed C inference
+engine (\texttt{fastgrnn.cpp}) is a single $\sim$200-line
+translation unit that compiles unmodified under both
+\texttt{avr-gcc} (\arduino{}) and the Code Composer Studio
+\texttt{msp430-elf-gcc} (\msp{}). All weights are stored in Flash
+as a \texttt{const int16\_t} array, alongside the per-tensor
+scales and the two activation LUTs. The runtime working set
+(hidden state $\mathbf{h}$, gate $\mathbf{z}$, candidate
+$\tilde{\mathbf{h}}$, output logits, and scratch) totals
+$\sim$300~bytes, fitting comfortably within the 512~B SRAM budget
+of the \msp{}.

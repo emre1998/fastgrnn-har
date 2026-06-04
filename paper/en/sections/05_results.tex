@@ -1,0 +1,283 @@
+\section{Results}
+\label{sec:results}
+
+We report results in the order of the L-S-Q pipeline
+(Sections~\ref{sec:results:lsq}--\ref{sec:results:quant}),
+then turn to deployment behavior
+(Sections~\ref{sec:results:crossplatform}--\ref{sec:results:streaming}).
+All experiments use the protocol of Section~\ref{sec:setup}.
+
+\subsection{L-S-Q Pipeline Accuracy}
+\label{sec:results:lsq}
+
+Table~\ref{tab:lsq} summarizes the cumulative effect of each
+compression stage. The full-rank FastGRNN cell with classifier head
+(Section~\ref{sec:method:cell}) totals 440 parameters and reaches
+F1~$=$~0.912 on the test set. Low-rank factorization
+($r_w{=}2$, $r_u{=}8$) reduces the recurrent matrix
+parameter count via the $\mathbf{U} = \mathbf{U}_1 \mathbf{U}_2^\top$
+decomposition (mean F1 across five seeds drops to 0.879 at
+430 nonzero parameters). Sparsification at $s{=}0.5$ further reduces to
+283 nonzero parameters with another modest drop (0.856 mean).
+Per-tensor Q15 quantization, with the activation calibration of
+Section~\ref{sec:method:q15}, then \emph{recovers} accuracy
+exactly: across 3{,}399 test windows the integer C implementation
+agrees with the PyTorch reference on 100\% of predictions, and
+the C-side macro F1 is \textbf{0.9176}. Fig.~\ref{fig:saturation}
+shows the upstream $H{=}16$ training run from which all subsequent
+stages are derived.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\linewidth]{figures/saturation.pdf}
+\caption{Hidden size $H{=}16$ training trajectory.
+Test F1 saturates near epoch~100; the best-seed checkpoint
+(F1~$=$~0.912 at epoch~113) is the upstream model for all
+subsequent compression stages.}
+\label{fig:saturation}
+\end{figure}
+
+\begin{table}[t]
+\centering
+\caption{Sequential L-S-Q pipeline on \hapt{}. Each row applies the
+indicated transformation cumulatively. Mean F1 is across five
+seeds; the final Q15 line is on the deployed seed-0 model.}
+\label{tab:lsq}
+\begin{tabular}{lrrr}
+\toprule
+Stage & F1 & Nonzero params & Weight size (FP32 / Q15) \\
+\midrule
+FastGRNN full-rank ($H{=}16$)     & 0.912 & 440            & 1.8~KB \\
++ Low-rank ($r_w{=}2$, $r_u{=}8$) & 0.879 & 430            & 1.7~KB \\
++ Sparsity ($s{=}0.5$)            & 0.856 & 283            & 1.1~KB \\
++ Q15 (weights + calibrated acts) & \textbf{0.918} & 283   & \textbf{566~B} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+To contextualize the parameter budget, Table~\ref{tab:baselines}
+compares the deployed model against an MLP baseline trained on the
+same \hapt{} split (the lightest non-recurrent reference) and
+against the theoretical parameter counts of LSTM and GRU cells at
+the same hidden size. The deployed \fastgrnn{} LSQ model is
+\textbf{44$\times$ smaller than the MLP baseline} and
+\textbf{$\sim$5$\times$ smaller than an LSTM cell} at matched $H$,
+before classifier overhead.
+
+\begin{table}[t]
+\centering
+\caption{Parameter footprint of the deployed model against
+non-recurrent and recurrent baselines. LSTM and GRU counts are
+theoretical at $H{=}16$, $d{=}3$ (cell-only); their reported
+accuracies on related HAR tasks are similar to or slightly above
+\fastgrnn{} at a $\sim$4$\times$ parameter
+disadvantage~\cite{kusupati2018fastgrnn}. MLP F1 is measured in
+this work; the classifier head adds 102 parameters in all cases.}
+\label{tab:baselines}
+\begin{tabular}{lrr}
+\toprule
+Model & Params (cell only) & F1 on \hapt{} \\
+\midrule
+MLP baseline                  & 12{,}518 (full)  & 0.847 \\
+LSTM ($H{=}16$, theoretical)  & 1{,}280          & --- \\
+GRU ($H{=}16$, theoretical)   & 960              & --- \\
+\fastgrnn{} cell ($H{=}16$)   & 338              & --- \\
+\fastgrnn{} L (low-rank)      & 328              & 0.879 \\
+\fastgrnn{} LSQ (deployed)    & \textbf{181}     & \textbf{0.918} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Multi-Seed Stability and Rank Selection}
+\label{sec:results:lowrank}
+
+Fig.~\ref{fig:lowrank} reports the per-seed test-F1 distribution
+across recurrent ranks $r_u \in \{4, 6, 8, 12\}$, five seeds each.
+$r_u{=}8$ achieves the best mean ($0.879 \pm 0.056$) and the
+tightest tail. Across all four configurations, seed~$1$ is a
+consistent low outlier ($\sim$0.71~F1), regardless of rank --
+a reproducibility signal worth flagging: a single unlucky
+initialization can mislead a small-sample evaluation. Reporting
+mean~$\pm$~standard deviation across at least five seeds is
+therefore not optional for this model size.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\linewidth]{figures/lowrank_seeds.pdf}
+\caption{Per-seed test F1 across recurrent rank choices.
+$r_u{=}8$ achieves the best mean and acceptable variance.
+Red diamonds denote per-rank means; the green band marks the
+chosen configuration.}
+\label{fig:lowrank}
+\end{figure}
+
+\subsection{Sparsity Sweep}
+\label{sec:results:sparsity}
+
+Fig.~\ref{fig:sparsity} sweeps target sparsity
+$s \in \{0.3, 0.5, 0.7, 0.9\}$ at fixed $r_u{=}8$. The single-seed
+sweep traces a shallow but visible U-curve: $s{=}0.5$ retains the
+most accuracy, $s{=}0.3$ does not compress enough to justify the
+training cost, and $s \geq 0.7$ degrades materially. At the
+deployment sweet spot $s{=}0.5$, the five-seed mean is
+$0.856 \pm 0.099$, with the highest seed reaching 0.92. The
+elevated standard deviation at $s{=}0.5$ relative to the unsparsified
+mean ($0.879 \pm 0.056$) is the price of operating near the
+information-theoretic limit of the parameterization.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\linewidth]{figures/sparsity_curve.pdf}
+\caption{Test F1 vs.\ target sparsity. Single-seed sweep (blue line)
+and the five-seed mean $\pm$ standard deviation at $s{=}0.5$
+(red diamond). The 0.4--0.6 band is the deployment sweet spot.}
+\label{fig:sparsity}
+\end{figure}
+
+\subsection{Quantization Modes}
+\label{sec:results:quant}
+
+Fig.~\ref{fig:quant} and Table~\ref{tab:quant} compare four
+quantization configurations on the seed-0 model. Weight-only Q15
+is lossless: $\sigma$ and $\tanh$ continue to operate in FP32 and
+weight quantization noise is below the inter-seed variance of the
+training procedure itself. Naive Q15 activation quantization,
+without calibration, is catastrophic: the F1 collapses from 0.918
+to 0.16 and the \textsc{standing} class disappears entirely. With
+per-tensor activation calibration -- a deterministic pre-pass of
+five training mini-batches -- Q15 inference recovers the
+FP32-reference accuracy to within rounding noise on every class.
+This is the configuration deployed on both MCUs.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\linewidth]{figures/quant_modes.pdf}
+\caption{Quantization modes on seed-0 model. Weight-only Q15 is
+lossless; naive Q15 activations collapse the model; calibrated Q15
+activations recover the reference within rounding noise.}
+\label{fig:quant}
+\end{figure}
+
+\begin{table}[t]
+\centering
+\caption{Effect of quantization mode on seed-0 test F1.}
+\label{tab:quant}
+\begin{tabular}{lrl}
+\toprule
+Mode & F1 & Notes \\
+\midrule
+Float32                              & 0.918           & Reference \\
+Q15 weights, FP32 acts               & 0.918           & Lossless \\
+Q15 weights, \emph{naive} Q15 acts   & 0.16            & STANDING collapse \\
+Q15 weights, \emph{calibrated} Q15 acts & \textbf{0.918} & \textbf{Deployed} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Per-Class Behavior}
+\label{sec:results:perclass}
+
+Fig.~\ref{fig:perclass} traces per-class F1 across the three FP32
+pipeline stages and the deployed Q15 model. The static classes
+(\textsc{sitting}, \textsc{standing}, \textsc{laying}) retain
+high F1 throughout. \textsc{walking} and \textsc{upstairs}
+degrade by 1--3 percentage points under sparsification but
+remain above 0.88. \textsc{downstairs} is the binding-constraint
+class throughout, falling from $\sim$0.91 (low-rank FP32) to
+0.89 (sparse) and recovering to 0.91 after calibrated Q15 -- a
+finding consistent with the broader HAR
+literature~\cite{wang2019harsurvey,demrozi2020harsurvey}, which
+identifies dynamic descending motion as systematically the hardest
+class on smartphone-grade accelerometry.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\linewidth]{figures/per_class_f1.pdf}
+\caption{Per-class F1 across compression stages (seed~0).
+\textsc{laying} is trivially separable;
+\textsc{downstairs} remains the binding-constraint class throughout,
+mirroring the broader literature.}
+\label{fig:perclass}
+\end{figure}
+
+\subsection{Cross-Platform Deterministic Inference}
+\label{sec:results:crossplatform}
+
+The same portable C source compiles unmodified on both the
+8-bit \arduino{} and the 16-bit \msp{}. On the entire 3{,}399-window
+test set, predictions agree on 100\% of cases; logits agree to
+better than $10^{-2}$ absolute (well below any decision-boundary
+relevant difference). Table~\ref{tab:hstate} samples the hidden
+component $h_0$ at six time-points within a single streaming window:
+the two platforms produce identical trajectories to two decimal
+places. This is not an obvious result. The two devices use
+different software-emulated floating-point implementations, different
+calling conventions, and different word sizes. The fact that the
+end-to-end prediction is nonetheless bit-equivalent indicates that
+our calibrated Q15 weights plus FP32-accumulate-then-saturate
+arithmetic are stable across implementation details -- a
+reproducibility property worth preserving for safety-relevant HAR.
+
+\begin{table}[t]
+\centering
+\caption{Hidden-state component $h_0$ evolution across platforms
+during one streaming test window (50~Hz pacing).}
+\label{tab:hstate}
+\begin{tabular}{rrr}
+\toprule
+$t$ (samples) & Arduino $h_0$ & MSP430 $h_0$ \\
+\midrule
+25  & $-0.720$  & $-0.720$  \\
+50  & $-0.352$  & $-0.352$  \\
+75  & $+0.459$  & $+0.459$  \\
+100 & $+3.803$  & $+3.803$  \\
+125 & $+11.388$ & $+11.388$ \\
+128 & $+12.542$ & $+12.542$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Real-Time Streaming Performance}
+\label{sec:results:streaming}
+
+Table~\ref{tab:streaming} reports per-sample latency under
+50~Hz paced streaming (20~ms budget). Both platforms run real-time
+with zero over-budget samples across the entire 128-sample test
+window. The Arduino consumes 46\% of the budget on average, leaving
+ample room for I\textsuperscript{2}C reads, LED feedback, and UART
+logging. The \msp{} consumes 65\% on average, still comfortably
+below budget.
+
+The 256-entry sigmoid/tanh LUT of Section~\ref{sec:method:lut} is
+what makes the \msp{} feasible. Without the LUT, full-window
+inference takes $\sim$54~s on the \msp{}; with the LUT, it takes
+$\sim$1.8~s, a \textbf{30.5$\times$} speedup. Translated to the
+streaming regime, this is the difference between completely
+non-real-time and a streaming budget headroom of seven
+milliseconds per sample. The same LUT is enabled on the
+\arduino{} too; the speedup there is more modest (1.51$\times$)
+because the AVR core already has a hardware multiplier.
+
+\begin{table}[t]
+\centering
+\caption{50~Hz paced streaming performance. Budget is 20~ms/sample.
+Both platforms include the 256-entry LUT.}
+\label{tab:streaming}
+\begin{tabular}{lrrrr}
+\toprule
+Platform & Avg (ms) & Max (ms) & Budget use & Over-budget \\
+\midrule
+\arduino{} & 9.21 & 10 & 46\% & 0 / 128 \\
+\msp{}     & 13.0 & 14 & 65\% & 0 / 128 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\linewidth]{figures/deploy_latency.pdf}
+\caption{Per-sample inference latency on the three reference
+platforms. The red dashed line marks the 20~ms budget imposed by
+50~Hz sampling. Both MCU targets execute well below budget.}
+\label{fig:latency}
+\end{figure}

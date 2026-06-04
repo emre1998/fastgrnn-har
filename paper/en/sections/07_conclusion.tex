@@ -1,0 +1,25 @@
+\section{Conclusion}
+\label{sec:conclusion}
+
+We reproduced \fastgrnn{} end-to-end on two bare-metal
+microcontrollers -- the 8-bit \arduino{} and the 16-bit
+multiplier-less \msp{} -- and demonstrated that compact gated
+recurrent cells are a practical fit for kilobyte-class wearable
+HAR. The deployed model occupies 566~bytes of weights, achieves
+macro F1~$=$~0.918 on the \hapt{} benchmark, and runs in real time
+at 50~Hz on both targets with zero over-budget samples. The
+integer C inference engine is bit-equivalent across 8-bit AVR and
+16-bit MSP430 implementations.
+
+Three contributions extend the original \fastgrnn{} paper:
+cross-platform deterministic inference, a 30.5$\times$ LUT-based
+speedup for multiplier-less MCUs, and an empirical characterization
+of the $\sim$2~s recurrent warm-up latency that bounds end-to-end
+response time. Taken together, these results support a broader
+claim: in a period when the global semiconductor supply cannot
+indefinitely scale up to meet ML demand, algorithmic refactoring
+of recurrent architectures is a credible alternative -- AI that
+runs on the silicon we already have. All code, models, and
+reproducibility artifacts are publicly available at
+\url{https://github.com/emre1998/fastgrnn-har} under the Apache
+License 2.0.

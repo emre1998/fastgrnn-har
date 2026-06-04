@@ -1,0 +1,87 @@
+\section{Related Work}
+\label{sec:related}
+
+We position this paper at the intersection of five related but
+distinct strands of work.
+
+\subsection{Compact Recurrent Cells}
+
+The standard LSTM~\cite{hochreiter1997lstm} and
+GRU~\cite{cho2014gru} cells encode long-range temporal structure
+effectively but are too heavy for kilobyte-class MCUs: a
+modestly-sized LSTM ($H{=}64$, $d{=}3$) already exceeds
+\SI{50}{\kilo\byte} of weights at FP32 precision, well above the
+\SI{16}{\kilo\byte} Flash budget of our target device.
+
+\fastgrnn{}~\cite{kusupati2018fastgrnn} addresses this gap with a
+two-scalar gated cell ($\zeta, \nu$) backed by low-rank weight
+matrices, achieving accuracy comparable to LSTM on sequence tasks
+at one to two orders of magnitude fewer parameters. Complementary
+non-recurrent EdgeML approaches include
+Bonsai~\cite{kumar2017bonsai}, a shallow non-linear tree, and
+ProtoNN~\cite{gupta2017protonn}, a prototype-based classifier.
+The three together form the Microsoft Research EdgeML
+toolkit~\cite{edgeml}. \fastgrnn{} is the only one of these three
+that natively handles temporal input, which is essential for HAR.
+
+\subsection{Quantization}
+
+Post-training quantization (PTQ) compresses neural-network weights
+and activations from FP32 to fixed-point or low-bit integer
+formats. Jacob \emph{et al.}~\cite{jacob2018integer} introduce
+integer-arithmetic-only inference with a per-tensor scale
+formulation; Han \emph{et al.}~\cite{han2016deepcompression}
+combine pruning, quantization, and Huffman coding to compress deep
+networks by an order of magnitude.
+Quantization-aware training~(QAT)~\cite{hubara2017qnn} avoids the
+PTQ accuracy cliff at the price of full retraining. We use
+per-tensor Q15 PTQ for both weights and -- with explicit activation
+calibration -- intermediate tensors; the calibration step turns
+out to be the dividing line between lossless and catastrophic
+deployment (Section~\ref{sec:results:quant}), and is what allows
+us to avoid the QAT machinery entirely.
+
+\subsection{Sparsity and Pruning}
+
+Iterative hard thresholding (IHT)~\cite{blumensath2009iht} is the
+sparsification engine used by \fastgrnn{}: at each step the
+top-$k$ magnitude entries of every weight tensor are retained and
+the rest are zeroed, then the network is re-trained with the mask
+fixed. Han \emph{et al.}~\cite{han2015pruning} demonstrate that
+aggressive pruning preserves accuracy in larger
+networks; Frankle and Carbin's lottery ticket
+hypothesis~\cite{frankle2019lt} provides theoretical grounding for
+why such sparse sub-networks remain trainable.
+
+\subsection{tinyML on More Capable Targets}
+
+The tinyML community~\cite{banbury2021mlperf} has converged on
+ARM Cortex-M class targets with hundreds of kilobytes of SRAM,
+hardware FPUs, and single-cycle multipliers.
+MCUNet~\cite{lin2020mcunet} jointly designs a neural architecture
+and an interpreter to maximize Cortex-M throughput.
+CMix-NN~\cite{capotondi2020cmixnn} provides mixed-precision
+kernels for memory-constrained edge devices.
+CMSIS-NN~\cite{lai2018cmsisnn} from ARM accelerates common layers
+via Cortex-M SIMD instructions, and TensorFlow Lite
+Micro~\cite{david2021tflitemicro} offers a portable runtime layer.
+
+None of these target the \msp{}-class device addressed in
+this paper, which is one to two orders of magnitude smaller and
+lacks a hardware multiplier entirely. To our knowledge, the present
+work is the first end-to-end public reproduction of a gated
+recurrent cell on an MCU with no hardware multiplier.
+
+\subsection{Human Activity Recognition}
+
+The UCI HAR~\cite{anguita2013public} and its transition-aware
+extension \hapt{}~\cite{reyes2015transition} are the de facto
+public benchmarks for accelerometer-based HAR.
+DeepConvLSTM~\cite{ordonez2016deepconvlstm} established a strong
+deep-learning baseline using stacked CNN and LSTM layers; broader
+surveys by Wang \emph{et al.}~\cite{wang2019harsurvey} and
+Demrozi \emph{et al.}~\cite{demrozi2020harsurvey} catalogue the
+methodological landscape, both of which highlight the dynamic
+\textsc{downstairs} class as a persistent failure
+mode -- a finding we corroborate in
+Section~\ref{sec:results:perclass}.

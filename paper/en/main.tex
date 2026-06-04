@@ -1,0 +1,72 @@
+%% main.tex — FastGRNN-HAR on Bare-Metal MCUs
+%% Author: Emre Can Kızılateş (Independent Researcher, Izmir, Turkey)
+%% Target: arXiv preprint, IEEE conference format
+%% Compile: pdflatex main && bibtex main && pdflatex main && pdflatex main
+
+\documentclass[conference,10pt]{IEEEtran}
+
+% ------------------- Packages -------------------
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{cite}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{algorithmic}
+\usepackage{graphicx}
+\usepackage{textcomp}
+\usepackage{xcolor}
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{hyperref}
+\usepackage{url}
+\usepackage{siunitx}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,positioning,shapes.geometric,fit,backgrounds}
+\hypersetup{colorlinks=true,linkcolor=blue,citecolor=blue,urlcolor=blue}
+
+% ------------------- Macros -------------------
+\newcommand{\fastgrnn}{FastGRNN}
+\newcommand{\msp}{MSP430G2553}
+\newcommand{\arduino}{Arduino Uno R3}
+\newcommand{\hapt}{HAPT}
+\newcommand{\TODO}[1]{\textcolor{red}{\textbf{[TODO: #1]}}}
+
+% ------------------- Metadata -------------------
+\title{\fastgrnn{} on Bare-Metal Microcontrollers:\\
+An End-to-End Reproduction with Low-Rank, Sparse, Quantized\\
+Inference for Real-Time Human Activity Recognition}
+
+\author{
+\IEEEauthorblockN{Emre Can Kızılateş}
+\IEEEauthorblockA{Independent Researcher, Izmir, Turkey\\
+kizilatesemrecan@gmail.com}
+}
+
+\begin{document}
+
+\maketitle
+
+% ------------------- Sections -------------------
+\input{sections/00_abstract}
+
+\begin{IEEEkeywords}
+FastGRNN, recurrent neural networks, human activity recognition,
+quantization, sparsity, low-rank factorization, edge AI, tinyML,
+microcontroller, MSP430, Arduino, bare-metal inference.
+\end{IEEEkeywords}
+
+\input{sections/01_introduction}
+\input{sections/02_related_work}
+\input{sections/03_method}
+\input{sections/04_experimental_setup}
+\input{sections/05_results}
+\input{sections/06_discussion}
+\input{sections/07_conclusion}
+
+% ------------------- References -------------------
+\bibliographystyle{IEEEtran}
+\bibliography{references}
+
+\appendices
+\input{sections/08_appendix}
+
+\end{document}

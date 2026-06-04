@@ -1,0 +1,85 @@
+\section{Experimental Setup}
+\label{sec:setup}
+
+\subsection{Dataset}
+
+We use the Human Activities and Postural Transitions (\hapt{})
+dataset~\cite{reyes2015transition}, an extension of UCI
+HAR~\cite{anguita2013public}. \hapt{} contains tri-axial linear
+acceleration recorded at 50~Hz from a smartphone worn at the waist
+by 30 subjects performing six basic activities:
+\textsc{walking}, \textsc{upstairs}, \textsc{downstairs},
+\textsc{sitting}, \textsc{standing}, and \textsc{laying}.
+We adopt the canonical subject-disjoint train/validation/test split
+of~\cite{reyes2015transition}, yielding 7{,}352 training windows,
+1{,}515 validation windows, and 3{,}399 test windows of length~128
+(2.56~s at 50~Hz). All accuracy and F1 numbers reported in this
+paper are on the held-out test split.
+
+For streaming evaluation we feed each test window sample-by-sample
+at 50~Hz and reset the hidden state at every window boundary,
+matching the deployed runtime exactly.
+
+\subsection{Training Protocol}
+
+Models are trained in PyTorch~2.x with the
+Adam optimizer ($\eta{=}10^{-3}$, batch size~64, 100 epochs)
+on a desktop CPU. The IHT sparsification mask follows the cubic
+schedule of Section~\ref{sec:method:iht}, reaching the target
+sparsity at epoch~50 and remaining frozen for the subsequent 50
+epochs of fine-tuning. Each reported configuration is repeated
+across the five seeds $\{0, 1, 2, 3, 4\}$; statistics are
+mean~$\pm$~standard deviation unless otherwise noted.
+
+\subsection{Deployment Hardware}
+
+Two bare-metal targets are evaluated:
+\begin{itemize}
+\item \textbf{\arduino{}} (ATmega328P): 8-bit AVR core at
+16~MHz; 32~KB Flash; 2~KB SRAM; hardware $8{\times}8$ multiplier;
+\emph{no} floating-point unit. Toolchain: Arduino~IDE~2.3.x
+with \texttt{avr-gcc} at \texttt{-Os}.
+\item \textbf{\msp{}}: 16-bit MSP430 core at the calibrated
+1~MHz DCO; 16~KB Flash; 512~B SRAM;
+\emph{no hardware multiplier of any kind}; no FPU. Toolchain:
+Code Composer Studio~12.x with the TI \texttt{msp430-elf-gcc}
+bare-metal build, compiled at \texttt{-O2}. The Energia runtime
+is \emph{not} used.
+\end{itemize}
+
+In both cases the deployed image consists of (i)~the
+\texttt{fastgrnn.cpp} inference engine,
+(ii)~the Q15 weight table and per-tensor scales
+(\texttt{model\_weights.h}),
+(iii)~the 256-entry sigmoid and tanh look-up tables, and
+(iv)~a UART driver for streaming class labels at 9600 (\msp{}) or
+115{,}200~baud (\arduino{}). All other Flash is empty.
+
+\subsection{Cross-Platform Verification Protocol}
+\label{sec:setup:verify}
+
+To verify the claim of 100\% prediction agreement between the
+FP32 PyTorch reference and the Q15 C implementation
+(Section~\ref{sec:results:crossplatform}), we run both inference
+pipelines on identical inputs and compare outputs. A Python harness
+(\texttt{test\_inference\_python.py}) loads the deployed Q15
+weights, executes a C-equivalent forward pass in NumPy (mirroring
+the LUT activations and per-tensor dequantization steps), and
+compares \texttt{argmax} predictions against the FP32 reference
+for every test window. The C implementation on Arduino and MSP430
+emits per-window predictions over UART, which are then compared
+against the same reference. All three execution paths -- FP32
+PyTorch, NumPy C-equivalent, and bare-metal C -- agree on all
+3{,}399 windows.
+
+\subsection{Live Sensor Configuration}
+
+For live demonstrations a GY-521 module exposing the InvenSense
+MPU-6050 is connected via I\textsuperscript{2}C. On the \msp{} we
+drive USCI\_B0 directly (P1.6~$=$~SCL, P1.7~$=$~SDA, no Energia
+\texttt{Wire} layer); on the \arduino{} the standard Wire library
+is used. Only the accelerometer at $\pm 2$~g range is read,
+matching the FP32 training-data scaling. A software timer paces
+the sampling loop to 50~Hz, which leaves 7--11~ms of headroom per
+sample after the inference step
+(Section~\ref{sec:results:streaming}).

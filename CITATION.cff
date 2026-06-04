@@ -1,0 +1,41 @@
+cff-version: 1.2.0
+message: "If you use this work, please cite it as below."
+title: >-
+  FastGRNN on Bare-Metal Microcontrollers: An End-to-End
+  Reproduction with Low-Rank, Sparse, Quantized Inference for
+  Real-Time Human Activity Recognition
+authors:
+  - family-names: "Kızılateş"
+    given-names: "Emre Can"
+    email: "kizilatesemrecan@gmail.com"
+    affiliation: "Independent Researcher"
+    city: "Izmir"
+    country: "TR"
+year: 2026
+url: "https://github.com/emre1998/fastgrnn-har"
+repository-code: "https://github.com/emre1998/fastgrnn-har"
+license: Apache-2.0
+keywords:
+  - "FastGRNN"
+  - "recurrent neural networks"
+  - "human activity recognition"
+  - "quantization"
+  - "sparsity"
+  - "low-rank factorization"
+  - "edge AI"
+  - "tinyML"
+  - "microcontroller"
+  - "MSP430"
+  - "Arduino"
+  - "bare-metal inference"
+preferred-citation:
+  type: generic
+  title: >-
+    FastGRNN on Bare-Metal Microcontrollers: An End-to-End
+    Reproduction with Low-Rank, Sparse, Quantized Inference for
+    Real-Time Human Activity Recognition
+  authors:
+    - family-names: "Kızılateş"
+      given-names: "Emre Can"
+  year: 2026
+  url: "https://github.com/emre1998/fastgrnn-har"
