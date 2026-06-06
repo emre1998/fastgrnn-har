@@ -1,0 +1,76 @@
+%% fastgrnn-har-tr.tex - Bare-metal MCU'larda FastGRNN
+%% Yazar: Emre Can Kizilates (Bagimsiz Arastirmaci, Izmir, Turkiye)
+%% Hedef: arXiv on baskisi, IEEE konferans formati
+%% Derleme: pdflatex fastgrnn-har-tr && bibtex fastgrnn-har-tr && pdflatex fastgrnn-har-tr && pdflatex fastgrnn-har-tr
+
+\documentclass[conference,10pt]{IEEEtran}
+
+% ------------------- Paketler -------------------
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[turkish]{babel}
+\usepackage{cite}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{algorithmic}
+\usepackage{graphicx}
+\usepackage{textcomp}
+\usepackage{xcolor}
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{hyperref}
+\usepackage{url}
+\usepackage{siunitx}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,positioning,shapes.geometric,fit,backgrounds}
+\hypersetup{colorlinks=true,linkcolor=blue,citecolor=blue,urlcolor=blue}
+
+% ------------------- Makrolar -------------------
+\newcommand{\fastgrnn}{FastGRNN}
+\newcommand{\msp}{MSP430G2553}
+\newcommand{\arduino}{Arduino Uno R3}
+\newcommand{\hapt}{HAPT}
+\newcommand{\TODO}[1]{\textcolor{red}{\textbf{[TODO: #1]}}}
+
+% ------------------- Ustbilgi -------------------
+\title{Bare-Metal Mikrodenetleyicilerde \fastgrnn{}:\\
+Gerçek Zamanlı İnsan Aktivite Tanıma için\\
+Düşük Ranklı, Seyrek ve Nicelendirilmiş Çıkarımın\\
+Uçtan Uca Yeniden Üretimi}
+
+\author{
+\IEEEauthorblockN{Emre Can Kızılateş}
+\IEEEauthorblockA{Elektrik-Elektronik Mühendisi\\
+Bağımsız Araştırmacı, İzmir, Türkiye\\
+kizilatesemrecan@gmail.com}
+}
+
+\begin{document}
+\shorthandoff{=}
+
+\maketitle
+
+% ------------------- Bolumler -------------------
+\input{sections/00_abstract}
+
+\begin{IEEEkeywords}
+FastGRNN, yinelemeli sinir ağları, insan aktivite tanıma,
+nicelendirme, seyreklik, düşük ranklı ayrıştırma, uç yapay zekâ,
+tinyML, mikrodenetleyici, MSP430, Arduino, bare-metal çıkarım.
+\end{IEEEkeywords}
+
+\input{sections/01_introduction}
+\input{sections/02_related_work}
+\input{sections/03_method}
+\input{sections/04_experimental_setup}
+\input{sections/05_results}
+\input{sections/06_discussion}
+\input{sections/07_conclusion}
+
+% ------------------- Kaynaklar -------------------
+\bibliographystyle{IEEEtran}
+\bibliography{references}
+
+\appendices
+\input{sections/08_appendix}
+
+\end{document}

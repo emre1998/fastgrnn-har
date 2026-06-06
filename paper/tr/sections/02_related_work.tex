@@ -1,0 +1,88 @@
+\section{İlgili Çalışmalar}
+\label{sec:related}
+
+Bu çalışma, beş ayrı fakat birbiriyle yakından ilişkili literatür
+çizgisiyle bağlantılıdır.
+
+\subsection{Kompakt Yinelemeli Hücreler}
+
+Standart LSTM~\cite{hochreiter1997lstm} ve GRU~\cite{cho2014gru}
+hücreleri uzun süreli zamansal örüntüleri etkili biçimde yakalar;
+ancak kilobayt düzeyinde belleğe sahip MCU'lar için ağır kalır.
+Örneğin orta büyüklükte bir LSTM ($H{=}64$, $d{=}3$) FP32 duyarlıkta
+daha şimdiden \SI{50}{\kilo\byte} üzerinde ağırlık gerektirir. Bu
+değer, hedef aygıtımızın \SI{16}{\kilo\byte} Flash sınırını aşar.
+
+\fastgrnn{}~\cite{kusupati2018fastgrnn}, bu boşluğu düşük ranklı
+ağırlık matrisleriyle desteklenen iki skaler kapılı ($\zeta, \nu$)
+bir hücreyle kapatmayı amaçlar. Dizi görevlerinde LSTM ile
+karşılaştırılabilir doğruluğa, bir ila iki büyüklük mertebesi daha
+az parametreyle ulaşabilir. Yinelemeli olmayan tamamlayıcı EdgeML
+yaklaşımları arasında sığ doğrusal olmayan bir ağaç olan
+Bonsai~\cite{kumar2017bonsai} ve prototip tabanlı bir sınıflandırıcı
+olan ProtoNN~\cite{gupta2017protonn} yer alır. Bu üç yöntem
+Microsoft Research EdgeML araç takımını oluşturur~\cite{edgeml}.
+HAR için kritik olan zamansal girdiyi, bu üçlü içinde doğrudan
+işleyen yöntem \fastgrnn{}'dur.
+
+\subsection{Nicelendirme}
+
+Eğitim-sonrası nicelendirme (PTQ), sinir ağı ağırlıklarını ve
+aktivasyonlarını FP32 yerine sabit noktalı ya da düşük bitli tamsayı
+biçimlerinde temsil eder. Jacob \emph{vd.}~\cite{jacob2018integer},
+tensör-başına ölçek kullanan ve yalnızca tamsayı aritmetiğine dayanan
+çıkarımı tanıtmıştır. Han \emph{vd.}~\cite{han2016deepcompression}
+ise budama, nicelendirme ve Huffman kodlamasını birleştirerek derin
+ağları büyük ölçüde sıkıştırmıştır. Nicelendirme farkında eğitim
+(QAT)~\cite{hubara2017qnn}, PTQ sonrasında görülebilen doğruluk
+kaybını azaltır; ancak bunun bedeli yeniden eğitimdir. Bu çalışmada
+hem ağırlıklar hem de, açık aktivasyon kalibrasyonuyla, ara tensörler
+için tensör-başına Q15 PTQ kullanıyoruz. Kalibrasyon adımı pratikte
+kritiktir: Bölüm~\ref{sec:results:quant}'da gösterildiği gibi,
+kalibrasyon yapılmadığında model çöker; kalibrasyon yapıldığında ise
+QAT'ye gerek kalmadan doğruluk korunur.
+
+\subsection{Seyreklik ve Budama}
+
+\fastgrnn{}'da kullanılan seyrekleştirme yöntemi iteratif sert
+eşiklemedir (IHT)~\cite{blumensath2009iht}. Her eğitim adımında,
+her ağırlık tensöründeki mutlak değerce en büyük $k$ girdi korunur;
+diğer girdiler sıfırlanır ve ağ bu sabit maske ile eğitilmeye devam
+eder. Han \emph{vd.}~\cite{han2015pruning}, daha büyük ağlarda
+agresif budamanın doğruluğu koruyabildiğini göstermiştir. Frankle ve
+Carbin'in piyango bileti hipotezi~\cite{frankle2019lt} de bu tür
+seyrek alt ağların neden eğitilebilir kaldığına kuramsal bir zemin
+sağlar.
+
+\subsection{Daha Güçlü Hedeflerde tinyML}
+
+tinyML literatürü~\cite{banbury2021mlperf} çoğunlukla ARM Cortex-M
+sınıfı hedeflere odaklanır. Bu hedeflerde yüzlerce kilobayt SRAM,
+donanım FPU'ları ve tek çevrimli çarpıcılar bulunur. MCUNet~\cite{lin2020mcunet},
+Cortex-M verimini artırmak için sinir mimarisini ve yorumlayıcıyı
+birlikte tasarlar. CMix-NN~\cite{capotondi2020cmixnn}, bellek
+kısıtlı uç aygıtlar için karma duyarlıklı çekirdekler sunar.
+ARM'ın CMSIS-NN kütüphanesi~\cite{lai2018cmsisnn}, yaygın katmanları
+Cortex-M SIMD yönergeleriyle hızlandırır. TensorFlow Lite
+Micro~\cite{david2021tflitemicro} ise taşınabilir bir çalışma
+zamanı katmanı sağlar.
+
+Bu çalışmaların hiçbiri, bu makalede ele alınan \msp{} sınıfı aygıtı
+hedeflemez. Bu aygıt bir ila iki büyüklük mertebesi daha küçüktür ve
+donanım çarpıcısına sahip değildir. Bildiğimiz kadarıyla bu çalışma,
+donanım çarpıcısı bulunmayan bir MCU üzerinde kapılı yinelemeli bir
+hücrenin herkese açık ilk uçtan uca yeniden üretimidir.
+
+\subsection{İnsan Aktivite Tanıma}
+
+UCI HAR~\cite{anguita2013public} ve geçiş etiketlerini de içeren
+uzantısı \hapt{}~\cite{reyes2015transition}, ivmeölçer tabanlı HAR
+için yaygın kullanılan kamusal kıyaslama kümeleridir.
+DeepConvLSTM~\cite{ordonez2016deepconvlstm}, yığılmış CNN ve LSTM
+katmanlarıyla güçlü bir derin öğrenme taban çizgisi oluşturmuştur.
+Wang \emph{vd.}~\cite{wang2019harsurvey} ile Demrozi
+\emph{vd.}~\cite{demrozi2020harsurvey} tarafından hazırlanan
+taramalar, yöntemsel manzarayı geniş biçimde özetler. Her iki
+tarama da dinamik \textsc{downstairs} sınıfının kalıcı bir zorluk
+olduğunu vurgular. Bölüm~\ref{sec:results:perclass}'ta bu bulgunun
+bizim deneylerimizde de sürdüğünü gösteriyoruz.

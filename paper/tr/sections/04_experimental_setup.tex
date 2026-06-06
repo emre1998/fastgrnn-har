@@ -1,0 +1,85 @@
+\section{Deneysel Kurulum}
+\label{sec:setup}
+
+\subsection{Veri Kümesi}
+
+UCI HAR~\cite{anguita2013public} veri kümesinin bir uzantısı olan
+Human Activities and Postural Transitions (\hapt{})
+veri kümesini~\cite{reyes2015transition} kullanıyoruz. \hapt{},
+belde taşınan bir akıllı telefondan 50~Hz'de kaydedilmiş üç eksenli
+doğrusal ivme verilerini içerir; 30 katılımcı altı temel aktiviteyi
+gerçekleştirir: \textsc{walking}, \textsc{upstairs},
+\textsc{downstairs}, \textsc{sitting}, \textsc{standing} ve
+\textsc{laying}. \cite{reyes2015transition} çalışmasındaki kanonik
+özne-ayrık eğitim/doğrulama/test bölmesini benimsiyoruz. Bu bölme,
+uzunluğu 128 olan (50~Hz'de 2.56~s) 7{,}352 eğitim penceresi,
+1{,}515 doğrulama penceresi ve 3{,}399 test penceresi üretir. Bu
+makalede raporlanan tüm doğruluk ve F1 değerleri ayrılmış test
+bölmesi üzerinde hesaplanmıştır.
+
+Akış değerlendirmesinde her test penceresini 50~Hz'de örnek örnek
+besliyor ve her pencere sınırında gizli durumu sıfırlıyoruz. Böylece
+değerlendirme, gömülü çalışma zamanındaki davranışla birebir eşleşir.
+
+\subsection{Eğitim Protokolü}
+
+Modeller, masaüstü CPU üzerinde PyTorch~2.x ve Adam iyileştiricisi
+($\eta{=}10^{-3}$, yığın boyutu~64, 100 epoch) ile eğitilmiştir. IHT
+seyrekleştirme maskesi Bölüm~\ref{sec:method:iht}'deki kübik
+çizelgeyi izler; hedef seyreklik epoch~50'de ulaşılır ve sonraki
+50 epoch'luk ince ayar boyunca maske sabit kalır. Raporlanan her
+yapılandırma beş tohum $\{0, 1, 2, 3, 4\}$ üzerinde tekrarlanır;
+aksi belirtilmedikçe istatistikler ortalama~$\pm$~standart sapma
+olarak verilmiştir.
+
+\subsection{Gömülü Hedef Donanım}
+
+İki bare-metal hedef değerlendirilmiştir:
+\begin{itemize}
+\item \textbf{\arduino{}} (ATmega328P): 16~MHz'de çalışan 8-bit AVR
+çekirdeği; 32~KB Flash; 2~KB SRAM; donanım $8{\times}8$ çarpıcısı;
+kayan nokta birimi \emph{yok}. Araç zinciri: \texttt{-Os}
+seçeneğiyle \texttt{avr-gcc} kullanan Arduino~IDE~2.3.x.
+\item \textbf{\msp{}}: kalibre edilmiş 1~MHz DCO'da çalışan 16-bit
+MSP430 çekirdeği; 16~KB Flash; 512~B SRAM; \emph{hiçbir tür donanım
+çarpıcısı yok}; FPU yok. Araç zinciri: \texttt{-O2} ile derlenen TI
+\texttt{msp430-elf-gcc} bare-metal derlemesini kullanan Code
+Composer Studio~12.x. Energia çalışma zamanı \emph{kullanılmamıştır}.
+\end{itemize}
+
+Her iki hedefte de yüklenen program şu bileşenlerden oluşur:
+(i)~\texttt{fastgrnn.cpp} çıkarım motoru,
+(ii)~Q15 ağırlık tablosu ve tensör-başına ölçekler
+(\texttt{model\_weights.h}),
+(iii)~256 girişli sigmoid ve tanh arama tabloları ve
+(iv)~9600 (\msp{}) ya da 115{,}200~baud (\arduino{}) hızında sınıf
+etiketi gönderen UART sürücüsü. Geri kalan Flash alanı kullanılmaz.
+
+\subsection{Platformlar Arası Doğrulama Protokolü}
+\label{sec:setup:verify}
+
+FP32 PyTorch referansı ile Q15 C uygulaması arasında \%100 tahmin
+uyumu iddiasını doğrulamak için (Bölüm~\ref{sec:results:crossplatform}),
+aynı girdileri iki çıkarım yolundan geçirip sonuçları
+karşılaştırıyoruz. Bir Python denetim betiği
+(\texttt{test\_inference\_python.py}) gömülü hedefe aktarılacak Q15
+ağırlıkları yükler, NumPy içinde C ile eşdeğer bir ileri geçiş
+çalıştırır (LUT aktivasyonları ve tensör-başına ölçek çözme adımları
+dahil) ve her test penceresi için \texttt{argmax} tahminlerini FP32
+referansıyla karşılaştırır. Arduino ve MSP430 üzerindeki C uygulaması
+da pencere-başına tahminleri UART üzerinden gönderir; bu tahminler
+aynı referansla denetlenir. Üç yürütme yolu -- FP32 PyTorch,
+NumPy'deki C-eşdeğer uygulama ve bare-metal C -- 3{,}399 pencerenin
+tamamında aynı sınıfı üretir.
+
+\subsection{Canlı Sensör Yapılandırması}
+
+Canlı gösterimler için InvenSense MPU-6050 sunan bir GY-521 modülü
+I\textsuperscript{2}C üzerinden bağlanır. \msp{} üzerinde USCI\_B0
+doğrudan sürülür (P1.6~$=$~SCL, P1.7~$=$~SDA, Energia
+\texttt{Wire} katmanı yoktur); \arduino{} üzerinde standart Wire
+kütüphanesi kullanılır. FP32 eğitim verisi ölçeklemesiyle eşleşmesi
+için yalnızca $\pm 2$~g aralığındaki ivmeölçer okunur. Yazılım
+zamanlayıcısı örnekleme döngüsünü 50~Hz'e ayarlar; çıkarım
+adımından sonra örnek başına 7--11~ms zaman payı kalır
+(Bölüm~\ref{sec:results:streaming}).

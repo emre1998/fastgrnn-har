@@ -1,0 +1,149 @@
+\section{Hiperparametreler}
+\label{app:hyper}
+
+Tablo~\ref{tab:hyper}, gömülü hedefe aktarılan modeli üretmek için
+kullanılan hiperparametrelerin tamamını listeler. Tüm değerler beş
+eğitim tohumu boyunca değişmeden tutulmuştur.
+
+\begin{table}[h]
+\centering
+\caption{Gömülü hedefe aktarılan \fastgrnn{} modeli için eğitim ve
+aktarım hiperparametreleri.}
+\label{tab:hyper}
+\begin{tabular}{lr}
+\toprule
+Parametre & Değer \\
+\midrule
+Gizli boyut $H$                  & 16 \\
+Giriş boyutluluğu $d$            & 3 (üç eksenli ivme) \\
+Pencere uzunluğu $T$             & 128 örnek (2.56~s) \\
+Örnekleme hızı                   & 50~Hz \\
+Çıkış sınıfları                  & 6 \\
+\midrule
+Yinelemeli rank $r_u$            & 8 \\
+Giriş rankı $r_w$                & 2 \\
+Hedef seyreklik $s$              & 0.5 (283 sıfır olmayan / 566) \\
+Seyreklik rampa epoch'u          & 50 (kübik çizelge) \\
+Sabit-maskeli ince ayar epoch'u  & 50 \\
+\midrule
+İyileştirici                     & Adam \\
+Öğrenme oranı $\eta$             & $10^{-3}$ \\
+Yığın boyutu                     & 64 \\
+Toplam epoch                     & 100 \\
+Rastgele tohumlar                & $\{0, 1, 2, 3, 4\}$ \\
+\midrule
+Aktivasyon fonksiyonu            & sigmoid, tanh \\
+LUT boyutu                       & her biri 256 giriş \\
+LUT giriş alanı                  & $[-8, +8]$ \\
+Ağırlık nicelendirme             & tensör-başına Q15 \\
+Aktivasyon nicelendirme          & tensör-başına Q15 + kalibrasyon \\
+Kalibrasyon mini-yığınları       & 5 \\
+Kalibrasyon güvenlik payı        & 10\% \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Q15 Nicelendirme Uygulaması}
+\label{app:q15}
+
+Bölüm~\ref{sec:method:q15}'de kullanılan tensör-başına Q15
+nicelendirme adımı, her tensör için tek satırlık bir işlemdir.
+Python'da:
+
+\begin{verbatim}
+def to_q15(W: np.ndarray, scale: float) -> np.ndarray:
+    return (W / scale).round() \
+                      .clip(-32768, 32767) \
+                      .astype(np.int16)
+\end{verbatim}
+
+Tensör-başına ölçek
+\[
+s_\ell = \max_{ij}\bigl|W^{(\ell)}_{ij}\bigr| \,\big/\, 32767,
+\]
+olarak seçilir; bu, her nicelendirilmiş girdiyi işaretli 16-bit
+aralık içinde tutan en büyük ölçektir. Aynı ifade hem yinelemeli
+ağırlık çarpanları $\mathbf{W}_1, \mathbf{W}_2,
+\mathbf{U}_1, \mathbf{U}_2$ hem de sınıflandırıcı başlığı için
+kullanılır. Çalışma zamanında çözülmüş değer şu şekilde hesaplanır:
+
+\begin{verbatim}
+float w = (float)W_q15[i] * scale;
+\end{verbatim}
+
+Her çözme işleminin çalışma zamanı maliyeti bir int-to-float
+dönüşümü ve bir çarpmadır. Bunlar AVR üzerinde ucuzdur; LUT
+aktivasyonları araya girdiğinde çarpıcısız \msp{} üzerinde de
+yönetilebilir düzeydedir.
+
+\section{LUT Üretim Algoritması}
+\label{app:lut}
+
+Bölüm~\ref{sec:method:lut}'deki sigmoid ve tanh arama tabloları
+Python'da çevrim dışı olarak önceden hesaplanır ve C başlık dosyası
+olarak yayılır:
+
+\begin{verbatim}
+LUT_SIZE     = 256
+INPUT_MIN    = -8.0
+INPUT_MAX    =  8.0
+BUCKET_WIDTH = (INPUT_MAX - INPUT_MIN) / LUT_SIZE
+
+sigmoid_lut = [
+    1.0 / (1.0 + math.exp(-(INPUT_MIN
+            + (i + 0.5) * BUCKET_WIDTH)))
+    for i in range(LUT_SIZE)
+]
+tanh_lut = [
+    math.tanh(INPUT_MIN + (i + 0.5) * BUCKET_WIDTH)
+    for i in range(LUT_SIZE)
+]
+\end{verbatim}
+
+Her giriş, kendi kovasının \emph{merkezindeki} aktivasyon değerini
+saklar ($(i + 0.5)$ ofseti). Bu, kovacık içinde düzgün dağılmış bir
+giriş için maksimum olabilirlik tahminidir ve yarım kova yanlılığını
+önler. Çalışma zamanı araması şöyledir:
+
+\begin{verbatim}
+static inline float lut_eval(const float *lut, float x) {
+    if (x <= LUT_INPUT_MIN) return lut[0];
+    if (x >= LUT_INPUT_MAX) return lut[LUT_SIZE - 1];
+    int idx = (int)((x - LUT_INPUT_MIN) * LUT_INPUT_SCALE);
+    return lut[idx];
+}
+\end{verbatim}
+
+\texttt{LUT\_INPUT\_SCALE = 1 / BUCKET\_WIDTH} olarak tanımlanır.
+İki tablo birlikte 2~KB Flash kaplar; birlikte çalışma zamanındaki
+tüm \texttt{expf} ve \texttt{tanhf} çağrılarını ortadan kaldırırlar.
+
+\section{MSP430 \texorpdfstring{I\textsuperscript{2}C}{I2C} İlk Çalıştırma}
+\label{app:hw}
+
+\msp{} üzerinde canlı MPU-6050 okuması, standart pin atamasıyla
+(P1.6~$=$~SCL, P1.7~$=$~SDA) I\textsuperscript{2}C ana kipindeki
+USCI\_B0 çevre birimini kullanır. Gelecekteki okurlar için iki
+pratik hususu kaydetmeye değer:
+
+\begin{itemize}
+\item \textbf{J5 jumper'ının çıkarılması.} MSP-EXP430G2 LaunchPad,
+kart üzerindeki yeşil LED'i P1.6 ile çoklar. Herhangi bir
+I\textsuperscript{2}C iletişiminden önce J5 jumper'ı fiziksel
+olarak çıkarılmalıdır; aksi hâlde SCL LED tarafından yüklenir ve
+veri yolu I\textsuperscript{2}C yüksek seviye eşiğinin altında kalır.
+
+\item \textbf{Bus-busy kurtarma.} Aktarım ortasında güç kesilirse
+USCI\_B0 çevre birimi \texttt{UCSCLLOW + UCBBUSY} durumuna
+kilitlenebilir. Geleneksel 9-saat kurtarma dizisi (SDA serbestken
+SCL'yi dokuz kez değiştirip ardından STOP üretmek) veri yolunu
+geri yükler. Açılışta GPIO düzeyinde yapılan bir sağlık denetimi
+(\texttt{P1IN \& (BIT6|BIT7)} değerinin \texttt{0xC0} olması
+beklenir), I\textsuperscript{2}C durum makinesi devreye alınmadan
+önce bu koşulu saptar.
+\end{itemize}
+
+Bu iki madde yaklaşık bir günlük ilk çalıştırma süresi tüketmiştir
+ve standart MSP430 uygulama notlarında~\cite{ti_msp430}
+belgelenmemiştir. Bir sonraki okura aynı günü kazandırma olasılığı
+için buraya eklenmiştir.

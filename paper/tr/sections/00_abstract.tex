@@ -1,0 +1,41 @@
+\begin{abstract}
+Son yıllarda makine öğrenmesindeki hâkim eğilim, zor problemleri
+daha büyük modeller, daha güçlü hızlandırıcılar ve daha geniş bellek
+bütçeleriyle çözmek oldu. Ancak yıllardır süren küresel yarı iletken
+arz sıkıntısı~\cite{burkacky2022chipshortage,khan2021chipshortage}
+ve sürekli çevrim içi çalışan çıkarım sistemlerinin artan enerji ve
+karbon maliyeti~\cite{strubell2019energy,patterson2021carbon}, bu
+yaklaşımın kırılganlığını açık biçimde ortaya koymaktadır. Bu tablo,
+ters yönde bir arayışı da gerekli kılar: yapay zekâ ve makine
+öğrenmesi algoritmalarını, giyilebilir cihazlarda, sensörlerde ve uç
+sistemlerde zaten yaygın biçimde kullanılan küçük
+mikrodenetleyicilere sığacak biçimde yeniden tasarlamak. Bu çalışma
+bu arayışa odaklanmaktadır. Kaynak kısıtlı çıkarım için geliştirilmiş
+kompakt bir kapılı yinelemeli hücre olan
+\fastgrnn{}~\cite{kusupati2018fastgrnn} algoritmasını uçtan uca ve
+açık kaynaklı olarak yeniden üretiyor; modeli, mevcut silikon
+ekosisteminin alt ucunu temsil eden iki bare-metal hedefte
+çalıştırıyoruz: 8-bit \arduino{} (ATmega328P) ve 16-bit \msp{}
+(donanım çarpıcısı yok; 16~KB Flash; 512~B SRAM). Sıkıştırma
+boru hattı düşük ranklı ağırlık ayrıştırmasını, iteratif sert
+eşikleme ile seyreklik kazandırmayı ve açık aktivasyon kalibrasyonu
+içeren tensör-başına Q15 eğitim-sonrası nicelendirmeyi bir araya
+getirir. Ortaya çıkan modelin ağırlıkları yalnızca
+\textbf{566~bayt} yer kaplar; model \hapt{} kıyaslama kümesinde
+\textbf{makro F1 $=$ 0.918} değerine ulaşır ve 3{,}399 test
+penceresinin tamamında PyTorch referansıyla \textbf{\%100 tahmin
+uyumu} gösterir. Her iki platform da \textbf{50~Hz'de gerçek
+zamanlı akış halinde çıkarım} yapabilir (Arduino'da örnek başına
+9.21~ms; MSP430'da 13~ms). Ayrıca 256 girişli sigmoid/tanh arama
+tablosu, donanım çarpıcısı bulunmayan MSP430 üzerinde
+\textbf{30.5$\times$ hızlanma} sağlar. Çalışma özgün \fastgrnn{}
+makalesini üç noktada genişletir: (i) platformlar arasında
+bit-eşdeğer deterministik çıkarım; (ii) uçtan uca yanıt süresini
+belirleyen yaklaşık 2~saniyelik yinelemeli ısınma gecikmesinin
+nicel incelenmesi; ve (iii) çarpıcısız gömülü hedeflerde
+uygulanabilir bir arama tablosu yöntemi. Sonuçlar, kompakt
+yinelemeli mimarilerin kalibre edilmiş nicelendirme ve arama tablosu
+tabanlı aktivasyonlarla birlikte, özel hızlandırıcılara gerek
+duymadan kaynak kısıtlı mikrodenetleyicilerde gerçek zamanlı
+cihaz-üstü çıkarımı mümkün kılabileceğini göstermektedir.
+\end{abstract}

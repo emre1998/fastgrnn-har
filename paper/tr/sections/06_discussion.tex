@@ -1,0 +1,161 @@
+\section{Tartışma}
+\label{sec:discussion}
+
+\subsection{Yinelemeli Isınma Gecikmesi}
+\label{sec:disc:warmup}
+
+Özgün \fastgrnn{} makalesinde~\cite{kusupati2018fastgrnn} ele
+alınmayan önemli bir nokta şudur: sınıf etiketinin kararlı hâle
+gelmesi için, kullanılan donanımdan bağımsız olarak, yaklaşık iki
+saniyelik ($\sim$100 örnek, 50~Hz) gizli durum geçmişi gerekir.
+Şekil~\ref{fig:warmup}, tek bir \textsc{standing} penceresi boyunca
+üretilen etiketi ve $h_0$ bileşenini izler. Model, $t{=}100$
+civarında doğru sınıfa kilitlenmeden önce \textsc{walking} ve
+\textsc{upstairs} tahminlerinden geçer. Bu davranış iki MCU'dan
+birine özgü değildir; Arduino ve MSP430 aynı yörüngeleri üretir
+(Bölüm~\ref{sec:results:crossplatform}).
+
+Düşme algılama, jest tanıma ya da duruş koçluğu gibi kullanıcıya
+dönük uygulamalarda bu bulgu önemlidir. Aktivite \emph{geçişleri},
+ancak gerçekleştikten yaklaşık 2~s sonra güvenle doğrulanabilir. Bu
+kayda değer bir gecikmedir; cihaz-üstü RNN'ler değerlendirilirken
+örnek-başına hızın yanında ayrıca raporlanmalıdır. Benzer
+büyüklükteki başka kapılı yinelemeli hücrelerde de aynı etkinin
+görülebileceğini düşünüyoruz. Bunu eşleşen parametre sayılarında
+LSTM/GRU taban çizgileriyle sınamak doğal bir devam çalışmasıdır.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\linewidth]{figures/warmup_curve.pdf}
+\caption{Tek bir 2.56~s pencerede (50~Hz, \textsc{standing} gerçek
+etiketi) gizli durum bileşeni $h_0$ ve üretilen sınıf etiketi.
+Arduino ve MSP430 aynı yörüngeleri üretir. Yaklaşık 2~s geçmiş
+birikene kadar sınıf etiketi kararsızdır.}
+\label{fig:warmup}
+\end{figure}
+
+\subsection{Yeniden Üretilebilirlik Olarak Platformlar Arası Determinizm}
+\label{sec:disc:determinism}
+
+Modern ML çıkarımı, donanımlar arasında çoğu zaman birebir yeniden
+üretilebilir değildir. Üreticiye özgü BLAS uygulamaları, karma
+duyarlıklı tensör çekirdekleri ve birleşmeli olmayan kayan nokta
+indirgemeleri küçük farklar doğurabilir. Buna karşılık taşınabilir C
+motorumuz, hem 8-bit AVR hem de 16-bit MSP430 hedeflerinde yazılımla
+öykünülen kayan nokta kullanmasına rağmen platformlar arasında
+\emph{bit-eşdeğer} tahminler üretir
+(Bölüm~\ref{sec:results:crossplatform}). Bu düzeyde determinizm,
+tıbbi nitelikli HAR gibi güvenlikle ilişkili gömülü uygulamalarda
+korunması gereken bir özelliktir. Düzenleyici kurumlar, bir yazılım
+değişikliğinin yalnızca yetkilendirildiği donanım üzerinde yeniden
+doğrulanmasını isteyebilir. İki farklı ISA üzerinde bit-eşdeğer kalan
+bir çıkarım yolu, bu kısıtı hafifletmek açısından değerlidir.
+
+\subsection{Zaman Payı Analizi ve Saf-Q15 Çıkmazı}
+\label{sec:disc:headroom}
+
+\msp{}, örnek başına 20~ms bütçenin \%65'ini kullanır ve
+$\sim$7~ms zaman payı bırakır (Bölüm~\ref{sec:results:streaming}).
+Canlı MPU-6050 testlerinde bu pay, örnek başına bir
+I\textsuperscript{2}C ivmeölçer okumasını, bir LED durum
+güncellemesini ve bir UART günlük satırını rahatça karşılar.
+
+Daha agresif bir \emph{saf-Q15} çıkarım yolu da denendi: ağırlıklar,
+aktivasyonlar \emph{ve} ara çarpımların tamamı Q15 tamsayı
+aritmetiğinde tutuldu. Bu yol pratikte başarısız oldu. Çok aşamalı
+düşük ranklı çarpım sırasında tensör-başına ölçekler zincirlenerek
+$\sim$$10^{-13}$ düzeyine kadar küçülüyor; bu değer int64 biriktirici
+ve özel bir aşama-başına kaydırma çizelgesi olmadan Q15 çarpıcıda
+temsil edilemiyor. Bölüm~\ref{sec:method:q15}'de tartışılan sabit
+Q9.6 biçimi ölçek zincirleme sorununu hafifletir; ancak bu kez
+ağırlık tarafında çözünürlük kaybı yaratır. Ağırlık büyüklükleri
+tensörler arasında dört büyüklük mertebesine yayıldığı için, tek bir
+Q9.6 ölçeği bazı tensörlerde kalibre edilmiş yola göre $8\times$'a
+varan çözünürlük kaybına neden olur. Daha temiz çözüm,
+nicelendirme farkında eğitimdir~\cite{hubara2017qnn}; çünkü ölçek
+çizelgesi eğitim sonrasında zorlanarak değil, eğitim sırasında
+öğrenilir. LUT tabanlı FP32 yol 50~Hz gerçek zamanlı kısıtı yeterli
+zaman payıyla karşıladığı için bu çalışmada QAT yolunu sürdürmedik.
+Bunu gelecek çalışma olarak ele alıyoruz
+(Bölüm~\ref{sec:disc:future}).
+
+\subsection{Sınırlılıklar}
+\label{sec:disc:limitations}
+
+İddialarımızın kapsamını dört sınırlılık belirler:
+
+\begin{itemize}
+\item \textbf{Veri kümesi.} \hapt{}, sabit biçimde bele takılmış bir
+akıllı telefonla laboratuvar koşullarında kaydedilmiştir. Sensörün
+vücut üzerindeki yer değiştirmesi, serbest yaşam verilerindeki dağılım
+kayması ve özneler arası değişkenliğin HAR doğruluğunu düşürdüğü
+bilinmektedir~\cite{wang2019harsurvey,demrozi2020harsurvey}; bunlar
+bu çalışmada modellenmemiştir.
+
+\item \textbf{Etiket kümesi.} Model altı temel \hapt{} aktivitesi
+üzerinde eğitilmiş ve değerlendirilmiştir. Tam \hapt{} etiket kümesi
+altı postüral geçiş daha içerir (ör.\ \textsc{stand-to-sit},
+\textsc{lie-to-sit}); modelimiz bu geçişleri işlemez. Bu tercih,
+özgün \fastgrnn{} HAR kıyaslamasıyla eşleşmek için yapılmıştır.
+
+\item \textbf{DOWNSTAIRS sınıfı.} \textsc{downstairs}, boru hattı
+boyunca performansı belirleyen en zor sınıftır
+(Şekil~\ref{fig:perclass}). Bu makalede sınıfa özgü bir iyileştirme
+denemesi yapılmamıştır. Bölüm~\ref{sec:disc:future} olası birkaç
+müdahaleyi özetler.
+
+\item \textbf{İstatistiksel anlamlılık testleri.} Çok tohumlu
+değerlendirmede beş tohum üzerinde ortalama$\pm$standart sapma
+raporlanmıştır; ancak eşleştirilmiş anlamlılık testleri ya da
+parametrik olmayan bootstrap aralıkları verilmemiştir. Biçimsel
+anlamlılık testi gelecek çalışmaya bırakılmıştır.
+\end{itemize}
+
+\subsection{Gelecek Yönelimler}
+\label{sec:disc:future}
+
+Bu çalışmanın ardından izlenebilecek beş doğal yön vardır.
+
+\begin{itemize}
+\item \textbf{Statik ve dinamik örüntüler için çift-rank ayrıştırma.}
+Rank taramamızda (Bölüm~\ref{sec:results:lowrank}) $r_u{=}4$ dinamik
+sınıflar (\textsc{walking}, \textsc{upstairs}, \textsc{downstairs})
+için, $r_u{=}8$ ise statik sınıflar (\textsc{sitting},
+\textsc{standing}) için daha elverişlidir. Düşük maliyetli bir
+varyant olarak
+$\mathbf{U}_\text{eff} = \mathrm{LowRank}(r{=}4) + \mathrm{diag}(\boldsymbol{\alpha})$
+kullanılabilir. Bu yapı yalnızca $H$ ek parametre ekler; statik
+DC-benzeri sinyalin diyagonal artık üzerinden, dinamik örüntünün ise
+düşük rank kolu üzerinden geçmesine izin verir. Bu yaklaşımın,
+statik sınıflarda bozulma yaratmadan $r_u{=}4$'ün dinamik sınıf
+başarımını geri kazanmasını bekliyoruz.
+
+\item \textbf{DOWNSTAIRS hedefli öznitelikler.} Standart UCI~HAR
+boru hattı, yerçekimini vücut ivmesinden ayırmak için 0.3~Hz'de
+Butterworth alçak geçiren süzgeç uygular. Özgün \fastgrnn{} HAR
+kurulumuyla eşleşmek için bu adımı kullanmadık. Bu süzgeci yeniden
+eklemek ya da 128 örnekli pencere üzerinde az sayıda FFT-bant
+özniteliğiyle girdiyi genişletmek, \textsc{downstairs} sınıfındaki
+farkı kapatmanın düşük maliyetli bir yolu olabilir.
+
+\item \textbf{Saf-Q15 çıkarım için nicelendirme farkında eğitim.}
+Bölüm~\ref{sec:disc:headroom}'da tartışıldığı gibi, ölçek
+zincirleme nedeniyle eğitim-sonrası nicelendirme tam tamsayı boru
+hattında başarısız olur. QAT~\cite{hubara2017qnn} bu sorunu
+çözebilir. Saf-Q15 yolun \msp{} üzerinde ek 2--3$\times$ hızlanma
+sağlaması muhtemeldir ve LUT tabanlı yaklaşımın doğal devamıdır.
+
+\item \textbf{Geçiş durumları.} Tam \hapt{} etiket kümesindeki altı
+postüral geçişi eklemek, yinelemeli durumun uzun ufuklu aktivite
+tanıma ile kısa ufuklu geçiş algılama arasında nasıl paylaştırılacağı
+sorusunu doğurur. İki farklı örnekleme temposunda değerlendirilen
+çok ölçekli bir yinelemeli hücre, makul bir başlangıç noktasıdır.
+
+\item \textbf{Çıkarım başına enerji.} Bu çalışma çıkarım-başına zaman
+raporlar; ancak çıkarım-başına joule raporlamaz. Kart üzerinde
+doğrudan akım ölçümü, gömülü uygulama değerlendirmesini tamamlar ve
+Bölüm~\ref{sec:intro}'daki motivasyona geri bağlanır. Silikon arzı
+ve enerji kısıtları birlikte düşünülmelidir; 30$\times$ çalışma süresi
+hızlanması, uygulama düzeyinde ancak pil tüketimini de orantılı
+biçimde azaltıyorsa anlamlıdır.
+\end{itemize}

@@ -1,0 +1,128 @@
+\section{Giriş}
+\label{sec:intro}
+
+\subsection{Motivasyon: Silikon Büyümediğinde Modeli Küçültmek}
+
+Makine öğrenmesinde son on yıla damgasını vuran yaklaşım oldukça
+belirgindir: problem zorlaştıkça model büyütülür, daha güçlü bir
+hızlandırıcı kullanılır ve bellek bütçesi genişletilir. Bu strateji
+dil, görüntü ve çok kipli üretim alanlarında etkileyici sonuçlar
+vermiştir~\cite{patterson2021carbon}. Bununla birlikte aynı
+stratejinin enerji, karbon ve tedarik zinciri maliyeti de giderek
+daha görünür hâle gelmiştir. 2020--2024 döneminde ileri seviye yarı
+iletkenlerde yaşanan küresel arz sıkıntısı otomotiv, tüketici
+elektroniği ve tıbbi cihaz sektörlerini
+aksatmış~\cite{burkacky2022chipshortage,khan2021chipshortage};
+sürekli çevrim içi çalışan çıkarım sistemlerinin enerji tüketimi ise
+hem büyük ölçekli hem de hızla büyüyen bir yük hâline
+gelmiştir~\cite{strubell2019energy,patterson2021carbon}.
+
+Bu nedenle tamamlayıcı bir araştırma yönü giderek daha önemli hâle
+gelmektedir. Buradaki soru, bir modeli çalıştırmak için hangi yeni
+hızlandırıcıya ihtiyaç duyduğumuz değil; hâlihazırda kitlesel
+ölçekte üretilen, her yıl on milyarlarca adet sevk edilen ve birim
+maliyeti birkaç dolar düzeyinde kalan silikon üzerinde hangi
+modellerin çalışabileceğidir. Bu silikon; giyilebilir cihazlarda,
+sensörlerde, akıllı ev aygıtlarında, otomotiv alt sistemlerinde ve
+endüstriyel telemetri uç noktalarında kullanılan 8-bit ve 16-bit
+mikrodenetleyicilerdir (MCU). Bu alan genellikle ``tinyML''
+olarak anılır~\cite{banbury2021mlperf}; GPU ölçekli çıkarımdan
+farklı olarak belirli bir büyük ölçekli altyapıya bağlı değildir.
+
+\subsection{Bare-Metal MCU Sınıfı}
+
+Yayımlanmış tinyML uygulamalarının önemli bir bölümü ARM Cortex-M
+sınıfı hedeflere yönelir. Bu aygıtlar yüzlerce kilobayt SRAM,
+donanım kayan nokta birimleri, tek çevrimli çarpıcılar ve üretici
+tarafından iyileştirilmiş sinir ağı çekirdekleri
+sunar~\cite{lai2018cmsisnn,david2021tflitemicro,lin2020mcunet}.
+Ucuzdurlar; ancak mikrodenetleyici dünyasının en alt ucuna göre
+hâlâ oldukça güçlüdürler. Bu makalede incelediğimiz \emph{bare-metal}
+MCU'lar ise kullanılabilir silikon yelpazesinin öteki ucunda
+yer alır:
+\begin{itemize}
+\item 32~KB Flash, 2~KB SRAM, donanım $8{\times}8$ çarpıcısı ve
+kayan nokta birimi bulunmayan 8-bit \arduino{} (ATmega328P);
+\item 16~KB Flash, 512~B SRAM ve \emph{hiçbir tür donanım çarpıcısı
+bulunmayan} 16-bit \msp{}. Bu aygıtta çarpma işlemleri yazılımla
+öykünülür.
+\end{itemize}
+Bu iki parça bugün de aktif olarak üretilmektedir ve birim maliyetleri
+ARM Cortex-M sınıfı hedeflerin belirgin biçimde altındadır. Bir
+yinelemeli ağ \msp{} üzerinde gerçek zamanlı çalıştırılabiliyorsa,
+aynı ağın bugün üretimde olan neredeyse her yaygın mikrodenetleyiciye
+uyarlanabileceğini söylemek mümkündür.
+
+\subsection{Neden Yinelemeli Ağlar, Neden \fastgrnn{}?}
+
+Bileğe ya da bele takılan bir eylemsiz ölçüm sensöründen insan
+aktivite tanıma (HAR), akış halinde sınıflandırma için doğal bir
+örnektir. Giriş boyutu düşüktür (üç ivmeölçer kanalı), örnekleme
+hızı sınırlıdır (50~Hz) ve çıkış uzayı küçüktür (altı sınıf)
+\cite{anguita2013public,reyes2015transition}. Bu nedenle problem,
+bare-metal MCU sınıfını değerlendirmek için uygundur: modele
+sığacak kadar küçük, fakat pencerelenmiş ileri beslemeli bir taban
+çizgisinden yarar görecek kadar zamansaldır.
+
+\fastgrnn{}~\cite{kusupati2018fastgrnn}, kaynak kısıtlı çıkarım
+için tasarlanmış kapılı bir yinelemeli hücredir. Düşük ranklı
+ağırlık ayrıştırması, iteratif sert eşikleme (IHT) ile
+seyrekleştirme~\cite{blumensath2009iht} ve Q15 sabit noktalı
+nicelendirme~\cite{jacob2018integer,han2016deepcompression} gibi
+birbirini tamamlayan sıkıştırma tekniklerini bir araya getirir.
+Özgün çalışmada \fastgrnn{}'nun, LSTM~\cite{hochreiter1997lstm}
+doğruluğuna çok daha az parametreyle yaklaşabildiği gösterilmiştir.
+Ancak bu çalışma çarpıcısız bir hedef için herkese açık bare-metal
+bir başvuru uygulaması sunmaz; ayrıca modelin akış kipindeki
+davranışını ayrıntılı biçimde incelemez.
+
+\subsection{Katkılar}
+
+Bu makale, bare-metal MCU'larda HAR için \fastgrnn{} algoritmasının
+uçtan uca ve açık kaynaklı bir yeniden üretimini sunar. Özgün
+makalenin ötesinde üç katkı öne çıkmaktadır:
+
+\begin{itemize}
+\item \textbf{Platformlar arası deterministik çıkarım.} Tek bir
+taşınabilir C kaynak dosyası hem 8-bit \arduino{} hem de 16-bit
+\msp{} üzerinde derlenir. 3{,}399 test penceresinin tamamında
+\emph{bit-eşdeğer} gizli durum yörüngeleri üretir ve PyTorch
+referansıyla tahmin düzeyinde \%100 uyuşur. Donanımdan bağımsız bu
+düzeyde yeniden üretilebilirlik, güvenlikle ilişkili gömülü
+uygulamalar için özellikle değerlidir.
+
+\item \textbf{Çarpıcısız hedefler için uygulanabilir bir arama
+tablosu yöntemi.} $[-8, +8]$ giriş aralığında tanımlanan 256 girişli
+sigmoid/tanh arama tablosu, \msp{} üzerinde tam pencere çıkarımını
+\textbf{30.5$\times$} hızlandırır (54~s $\rightarrow$ 1.8~s).
+Böylece gerçek zamanlı çalışamayan bir uygulama, 50~Hz akış
+bütçesini rahatlıkla karşılayan bir hedefe dönüşür. Bu yöntem
+\fastgrnn{}'ya özgü değildir; $\sigma$ ya da $\tanh$ aktivasyonları
+kullanan başka yinelemeli hücrelere de uygulanabilir.
+
+\item \textbf{Yinelemeli ısınma gecikmesinin ölçülmesi.} Tahminlerin
+kararlı hâle gelmesi için, donanımdan bağımsız olarak, yaklaşık
+2~saniyelik ($\sim$100 örnek, 50~Hz) gizli durum geçmişi gerektiğini
+gözlemliyoruz. Bu davranış donanımdan değil, yinelemeli dinamiklerden
+kaynaklanır ve \fastgrnn{} sınıfı HAR sistemlerinde kullanıcıya
+yansıyan yanıt süresini belirler. Özgün makalede bu nokta ele
+alınmamıştır.
+\end{itemize}
+
+\noindent\textbf{Kod ve yeniden üretilebilirlik.} Kaynak kodu,
+eğitilmiş modeller, dışa aktarılan Q15 ağırlıkları, deney günlükleri
+ve gömülü hedefler için üretilen ikililer Apache Lisansı 2.0 altında
+\url{https://github.com/emre1998/fastgrnn-har} adresinde
+paylaşılmıştır. Tam yeniden üretim yaklaşık iki saat CPU eğitimi ve
+beş dakika MCU aktarımı gerektirir.
+
+\subsection{Makalenin Akışı}
+
+Bölüm~\ref{sec:related}, kompakt RNN ve uç-ML literatürünü özetler.
+Bölüm~\ref{sec:method}, \fastgrnn{} hücresini ve düşük ranklı,
+seyrek, nicelendirilmiş (L-S-Q) sıkıştırma boru hattını tanımlar.
+Bölüm~\ref{sec:setup} deneysel kurulumu açıklar. Bölüm~\ref{sec:results}
+doğruluk, bellek ayak izi ve gerçek zamanlı akış performansını
+raporlar. Bölüm~\ref{sec:discussion}, ısınma gecikmesini ve
+platformlar arası determinizmi tartışır; ayrıca sınırlılıkları
+verir. Bölüm~\ref{sec:conclusion} makaleyi sonuçlandırır.

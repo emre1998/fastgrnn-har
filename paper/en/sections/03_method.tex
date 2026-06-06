@@ -29,7 +29,39 @@ $(\mathbf{W}, \mathbf{U})$ shared between the gate and the candidate
 update, in contrast to the three or four weight pairs of GRU or
 LSTM. In our HAR setup, $d{=}3$ (tri-axial acceleration), $H{=}16$,
 and the input sequence length is $T{=}128$ samples (one 2.56~s
-window at 50~Hz).
+window at 50~Hz). The choice $H{=}16$ is empirically justified in
+Table~\ref{tab:hsize}: doubling the hidden size to $H{=}32$
+triples the parameter count yet produces a \emph{lower} test F1,
+and the larger model degrades further with longer training~--- the
+canonical signature of overfitting on a dataset whose intrinsic
+complexity the smaller cell already saturates.
+
+\begin{table}[h]
+\centering
+\caption{Hidden-size selection on \hapt{}, full-rank \fastgrnn{}
+(no low-rank, no sparsification). $H{=}32$ has roughly three times
+the parameters of $H{=}16$ but is worse on every matched
+configuration, and \emph{further} degrades from epoch~30 to~50,
+indicating overfitting. $H{=}16$ continues to improve through
+epoch~120 (val-selected ceiling F1~$=$~0.912; see
+Section~\ref{sec:results:lsq}). $H{=}32$ was not extended to
+120~epochs --- its monotone degradation over 30~$\rightarrow$~50
+makes further training extremely unlikely to recover the gap.
+We therefore fix $H{=}16$ for all downstream experiments.}
+\label{tab:hsize}
+\begin{tabular}{rrrrr}
+\toprule
+$H$ & Epochs & F1 & Accuracy & Params \\
+\midrule
+\textbf{16} & 30  & 0.847          & 0.854          & \textbf{440}   \\
+\textbf{16} & 50  & 0.861          & 0.869          & \textbf{440}   \\
+\textbf{16} & 120 & \textbf{0.912} & \textbf{0.913} & \textbf{440}   \\
+32          & 30  & 0.833          & 0.845          & 1{,}384         \\
+32          & 50  & 0.830          & 0.834          & 1{,}384         \\
+32          & 120 & ---            & ---            & 1{,}384         \\
+\bottomrule
+\end{tabular}
+\end{table}
 
 Because the same weight pair $(\mathbf{W}, \mathbf{U})$ is reused in
 both~\eqref{eq:z} and~\eqref{eq:htilde}, the unconstrained

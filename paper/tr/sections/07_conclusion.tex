@@ -1,0 +1,27 @@
+\section{Sonuç}
+\label{sec:conclusion}
+
+Bu çalışmada \fastgrnn{} algoritmasını iki bare-metal
+mikrodenetleyici üzerinde uçtan uca yeniden ürettük: 8-bit
+\arduino{} ve donanım çarpıcısı bulunmayan 16-bit \msp{}. Sonuçlar,
+kompakt kapılı yinelemeli hücrelerin kilobayt düzeyinde belleğe
+sahip giyilebilir HAR uygulamaları için pratik bir seçenek olduğunu
+gösterir. Gömülü hedefe aktarılan modelin ağırlıkları 566~bayt yer
+kaplar; model \hapt{} kıyaslamasında makro F1~$=$~0.918 değerine
+ulaşır ve her iki hedefte de bütçeyi aşan örnek olmadan 50~Hz'de
+gerçek zamanlı çalışır. Tamsayı C çıkarım motoru, 8-bit AVR ve
+16-bit MSP430 uygulamaları arasında bit-eşdeğer sonuç verir.
+
+Çalışma, özgün \fastgrnn{} makalesini üç yönden genişletir:
+platformlar arası deterministik çıkarım, çarpıcısız MCU'lar için
+30.5$\times$ LUT tabanlı hızlanma ve uçtan uca yanıt süresini
+belirleyen $\sim$2~s yinelemeli ısınma gecikmesinin deneysel olarak
+ölçülmesi. Bu sonuçlar daha genel bir noktaya işaret eder: küresel
+yarı iletken arzının ML talebini sınırsız biçimde daha büyük
+donanımlarla karşılayamayacağı bir dönemde, yinelemeli mimarileri
+algoritmik olarak küçültmek güçlü bir alternatiftir. Başka bir
+ifadeyle, yapay zekâyı zaten elimizde olan silikon üzerinde
+çalıştırmak mümkündür. Tüm kod, modeller ve yeniden üretim
+dosyaları Apache Lisansı 2.0 altında
+\url{https://github.com/emre1998/fastgrnn-har} adresinde
+paylaşılmıştır.

@@ -1,0 +1,237 @@
+\section{Yöntem}
+\label{sec:method}
+
+Bu bölümde \fastgrnn{} hücresini, hücreye uygulanan üç aşamalı
+sıkıştırma boru hattını ve modelin çarpıcısız bir MCU üzerinde
+çalışabilmesini sağlayan LUT tabanlı aktivasyon yöntemini tanımlıyoruz.
+Şekil~\ref{fig:pipeline}, tüm akışı özetler.
+
+\subsection{\fastgrnn{} Hücre Formülasyonu}
+\label{sec:method:cell}
+
+$t$ anındaki giriş $\mathbf{x}_t \in \mathbb{R}^{d}$ ve önceki gizli
+durum $\mathbf{h}_{t-1} \in \mathbb{R}^{H}$ verildiğinde,
+\fastgrnn{} hücresi~\cite{kusupati2018fastgrnn} tek bir kapı
+$\mathbf{z}_t$, aday güncelleme $\tilde{\mathbf{h}}_t$ ve iki
+skalerli ara değerleme $\mathbf{h}_t$ hesaplar:
+\begin{align}
+\mathbf{z}_t &= \sigma(\mathbf{W} \mathbf{x}_t + \mathbf{U} \mathbf{h}_{t-1} + \mathbf{b}_z) \label{eq:z}\\
+\tilde{\mathbf{h}}_t &= \tanh(\mathbf{W} \mathbf{x}_t + \mathbf{U} \mathbf{h}_{t-1} + \mathbf{b}_h) \label{eq:htilde}\\
+\mathbf{h}_t &= \bigl(\zeta(\mathbf{1} - \mathbf{z}_t) + \nu\bigr)\, \tilde{\mathbf{h}}_t + \mathbf{z}_t \odot \mathbf{h}_{t-1} \label{eq:hupdate}
+\end{align}
+Burada $\odot$ eleman bazında çarpmayı, $\zeta, \nu \in (0,1)$ ise
+sızıntılı-integratör davranışı ile standart kapılı güncelleme arasında
+denge kuran \emph{öğrenilmiş skalerleri} gösterir. \fastgrnn{}'yu
+ayıran nokta bu iki skalerli kapıdır: GRU ya da LSTM'deki üç veya
+dört ağırlık çifti yerine, kapı ve aday güncelleme aynı ağırlık
+çiftini $(\mathbf{W}, \mathbf{U})$ paylaşır. Böylece LSTM'ye yakın
+ifade gücü çok daha az parametreyle elde edilir. HAR kurulumumuzda
+$d{=}3$ (üç eksenli ivme),
+$H{=}16$ ve giriş dizisi uzunluğu $T{=}128$ örnektir (50~Hz'de
+2.56~s'lik bir pencere). $H{=}16$ seçimi Tablo~\ref{tab:hsize}'da
+deneysel olarak gerekçelendirilmiştir: gizli boyutu $H{=}32$'ye
+çıkarmak parametre sayısını yaklaşık üç kat artırdığı hâlde daha
+düşük test F1 üretir ve eğitim uzadıkça sonuç daha da kötüleşir.
+Bu davranış, daha küçük hücrenin veri kümesindeki yapıyı zaten
+yakaladığı ve büyük modelin aşırı uyuma gittiği anlamına gelir.
+
+\begin{table}[h]
+\centering
+\caption{\hapt{} üzerinde gizli boyut seçimi; tam ranklı
+\fastgrnn{} (düşük rank yok, seyrekleştirme yok). $H{=}32$,
+$H{=}16$'ya göre yaklaşık üç kat parametreye sahip olmasına rağmen
+eşleşen her yapılandırmada daha kötüdür ve epoch~30'dan~50'ye
+\emph{daha da} bozulur; bu durum aşırı uyuma işaret eder.
+$H{=}16$ epoch~120'ye kadar iyileşmeye devam eder
+(doğrulama-seçimli tavan F1~$=$~0.912; bkz.
+Bölüm~\ref{sec:results:lsq}). $H{=}32$ 120~epoch'a
+uzatılmamıştır; 30~$\rightarrow$~50 aralığındaki monoton bozulma,
+daha uzun eğitimin farkı kapatma olasılığını son derece düşürür.
+Bu nedenle sonraki tüm deneylerde $H{=}16$ kullanılmıştır.}
+\label{tab:hsize}
+\begin{tabular}{rrrrr}
+\toprule
+$H$ & Epoch & F1 & Doğruluk & Parametre \\
+\midrule
+\textbf{16} & 30  & 0.847          & 0.854          & \textbf{440}   \\
+\textbf{16} & 50  & 0.861          & 0.869          & \textbf{440}   \\
+\textbf{16} & 120 & \textbf{0.912} & \textbf{0.913} & \textbf{440}   \\
+32          & 30  & 0.833          & 0.845          & 1{,}384         \\
+32          & 50  & 0.830          & 0.834          & 1{,}384         \\
+32          & 120 & ---            & ---            & 1{,}384         \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Aynı ağırlık çifti $(\mathbf{W}, \mathbf{U})$ hem~\eqref{eq:z}
+hem de~\eqref{eq:htilde} içinde yeniden kullanıldığından, hücrenin
+kısıtsız parametre sayısı şöyledir:
+\begin{align}
+\#\text{params}
+ &= \underbrace{Hd}_{\mathbf{W}} +
+    \underbrace{H^2}_{\mathbf{U}} +
+    \underbrace{2H}_{\mathbf{b}_z,\mathbf{b}_h} +
+    \underbrace{2}_{\zeta,\nu} \nonumber\\
+ &= 48 + 256 + 32 + 2 = 338.
+\end{align}
+Aynı gizli boyuttaki standart bir LSTM, bu tür dört ağırlık matrisi
+gerektirir ($\approx$\,1{,}280 parametre). Dolayısıyla
+\fastgrnn{}, mimari düzeyde $\sim$$4\times$ üstünlükle başlar.
+Aşağıdaki düşük rank ve seyrekleştirme aşamaları bunu bir büyüklük
+mertebesi daha azaltır.
+
+\subsection{Düşük Ranklı Ağırlık Ayrıştırması}
+\label{sec:method:lowrank}
+
+Giriş matrisi $\mathbf{W} \in \mathbb{R}^{H \times d}$ ve yinelemeli
+matris $\mathbf{U} \in \mathbb{R}^{H \times H}$, iki ince matrisin
+çarpımı olarak ayrıştırılır:
+\begin{align}
+\mathbf{W} &= \mathbf{W}_1 \mathbf{W}_2^\top, \quad \mathbf{W}_1 \in \mathbb{R}^{H \times r_w}, \mathbf{W}_2 \in \mathbb{R}^{d \times r_w}, \\
+\mathbf{U} &= \mathbf{U}_1 \mathbf{U}_2^\top, \quad \mathbf{U}_1 \in \mathbb{R}^{H \times r_u}, \mathbf{U}_2 \in \mathbb{R}^{H \times r_u}.
+\end{align}
+$\mathbf{W}_1, \mathbf{W}_2, \mathbf{U}_1, \mathbf{U}_2$
+çarpanları birlikte öğrenilir. Yinelemeli matris-vektör çarpımı
+$\mathbf{U}\mathbf{h} = \mathbf{U}_1(\mathbf{U}_2^\top \mathbf{h})$
+olarak değerlendirilir; böylece maliyet $H^2$ yerine $2 H r_u$
+çarp-topla işlemine iner. $r_u \in \{4, 6, 8, 12\}$ değerlerini her
+biri beş rastgele tohumla taradıktan sonra
+(Bölüm~\ref{sec:results:lowrank}), $r_w = 2, r_u = 8$ seçilmiştir.
+
+\subsection{İteratif Sert Eşikleme}
+\label{sec:method:iht}
+
+Dört çarpan matrisinin tamamını iteratif sert
+eşikleme~\cite{blumensath2009iht} ile seyrekleştiriyoruz. Her eğitim
+adımında, her ağırlık tensöründeki mutlak değerce en büyük $k$ girdi
+korunur; diğerleri sıfırlanır. Hedef seyreklik
+$s$, eğitim epoch'u $e$ boyunca
+\begin{equation}
+s_e = s \cdot \min\!\Bigl(1, \tfrac{e}{e_{\text{ramp}}}\Bigr)^{3}
+\end{equation}
+kübik çizelgesini izler; burada $e_{\text{ramp}} = 50$ olup bunu
+50 epoch'luk maske-sabit ince ayar izler.
+$s \in \{0.3, 0.5, 0.7, 0.9\}$ değerleri beş tohumla tarandıktan
+sonra (Bölüm~\ref{sec:results:sparsity}), doğruluk ile
+sıkıştırılabilirliği dengeleyen U-eğrisi optimumu olarak $s = 0.5$
+(283 sıfır olmayan parametre) seçilmiştir.
+
+\subsection{Aktivasyon Kalibrasyonlu Tensör-Başına Q15 Nicelendirme}
+\label{sec:method:q15}
+
+Her ağırlık tensörü $\mathbf{W}^{(\ell)}$
+($\ell \in \{W_1, W_2, U_1, U_2\}$) aşağıdaki biçimde nicelendirilir:
+\begin{equation}
+\hat{w}^{(\ell)}_{ij}
+  = \mathrm{clip}\!\Bigl(
+        \mathrm{round}\bigl(w^{(\ell)}_{ij} / s_\ell\bigr),
+        -2^{15}, 2^{15}-1
+    \Bigr),
+\end{equation}
+Burada tensöre özgü ölçek $s_\ell$, $\max_{ij}|w_{ij}| / s_\ell$
+değerinin Q15 tavanının hemen altında kalacağı biçimde seçilir.
+Çıkarım sırasında ileri geçişte çözülmüş değer
+$\hat{w}^{(\ell)}_{ij} \cdot s_\ell$ kullanılır.
+
+Bu şemayı aktivasyonlara doğrudan Q15 $[-1, 1)$ biçiminde
+uygulamak yıkıcı sonuç verir: eğitilmiş modelimizde gizli durum
+$\mathbf{h}_t$ $\sim$62 büyüklüklerine ulaşır; bu değer Q15'in
+temsil edilebilir aralığının bir büyüklük mertebesi ötesindedir.
+Müdahale edilmediğinde F1 0.918'den 0.16'ya düşer ve
+\textsc{standing} sınıfı tamamen kaybolur
+(Bölüm~\ref{sec:results:quant}).
+
+Basit bir çözüm, gözlenen $\mathbf{h}_t$ büyüklüklerini kapsayan
+$\pm 64$ temsil aralığına sahip sabit Q9.6 sabit nokta biçimine
+geçmektir. Ancak bu seçim, her tensörün gerçek dinamik aralığını
+göz ardı ederek tüm tensörlerde aynı güvenlik payını kullanır ve
+çözünürlükten ödün verir. Bunun yerine \emph{aktivasyon başına
+kalibrasyon} kullanıyoruz: kalibrasyon geçişi, eğitim
+verisinin beş mini-yığınını FP32 modelden geçirir, her ara tensörün
+ampirik maksimumunu kaydeder, \%10 güvenlik payı uygular ve her
+aktivasyona kendi ölçeğini atar. Tensör-başına şema Q9.6'yı
+genelleştirir; buna ihtiyaç duyan tensörler için (ör.\ $\mathbf{h}_t$)
+$\pm 64$ aralığına uyarlanabilir biçimde yaklaşırken, buna ihtiyaç
+duymayan tensörlerde (ör.\ kapı çıktısı
+$\mathbf{z}_t \in [0,1]$) tam Q15 çözünürlüğünü korur.
+Kalibrasyonla birlikte tamsayı C uygulaması ile FP32 referansı
+arasındaki tahmin uyumu 3{,}399 pencerelik test kümesinin tamamında
+\%100'dür ve C tarafındaki makro F1 0.9176'ya ulaşır; bu değer
+makale boyunca raporlanan gömülü model sonucudur.
+
+\subsection{LUT Tabanlı Aktivasyonlar}
+\label{sec:method:lut}
+
+Çarpıcısız bir hedefte en pahalı işlemler $\sigma$ ve $\tanh$
+hesaplarıdır. Her çağrı yazılımla öykünülen aşkın fonksiyonlara
+gider; hücre de örnek başına $2H$ aktivasyon hesaplar ($H{=}16$ için
+$2 \cdot 16 = 32$, 128 örnekli bir pencerede 4{,}096 çağrı).
+Çalışma zamanındaki bu çağrıları, Flash'ta saklanan ve $[-8, +8]$
+giriş aralığında tanımlanan 256 girişli arama tablolarıyla
+değiştiriyoruz:
+\begin{equation}
+\mathrm{LUT}[k]
+  = f\!\Bigl( -8 + k \cdot \tfrac{16}{255} \Bigr), \quad
+  k \in \{0, 1, \ldots, 255\},
+\end{equation}
+Burada $f \in \{\sigma, \tanh\}$. $[-8, +8]$ dışındaki girişler
+$\pm 1$ değerlerine doyurulur; bu bölgelerde her iki fonksiyon da
+kayan nokta duyarlığında zaten bu değerlere çok yakındır. Aralık
+içinde ise bitişik girdiler arasında doğrusal ara değerleme yapılır.
+Böylece her aktivasyon bir karşılaştırma, iki indeksli yükleme, bir
+çıkarma ve bir çarp-topla işlemine iner. İki tablo birlikte 1~KB
+Flash kaplar; bu değişiklik \msp{} üzerinde uçtan uca
+\textbf{30.5$\times$} hızlanma sağlar
+(Bölüm~\ref{sec:results:streaming}).
+
+\begin{figure}[t]
+\centering
+\begin{tikzpicture}[
+  node distance=4mm and 4mm,
+  every node/.style={font=\scriptsize},
+  stage/.style={draw, rounded corners=2pt, align=center,
+                 minimum height=8mm, minimum width=14mm, fill=blue!8,
+                 inner sep=2pt},
+  deploy/.style={draw, rounded corners=2pt, align=center,
+                 minimum height=8mm, minimum width=16mm, fill=green!10,
+                 inner sep=2pt},
+  arr/.style={-{Stealth[length=4pt]}, semithick},
+]
+\node[stage] (train)  {Kayan nokta\\eğitim};
+\node[stage, right=of train]    (lr)    {Düşük rank\\$r_w{=}2$, $r_u{=}8$};
+\node[stage, right=of lr]       (sp)    {IHT\\seyreklik 0.5};
+\node[stage, right=of sp]       (q15)   {Q15\\+ kalib.};
+
+\node[deploy, below=6mm of lr]  (arduino) {Arduino Uno\\(AVR, $\times$HW)};
+\node[deploy, below=6mm of q15] (msp)     {MSP430G2553\\($\times$HW yok)};
+
+\node[align=center, below=2mm of arduino, font=\scriptsize\itshape, text=gray]
+   (note1) {taşınabilir C + LUT};
+
+\draw[arr] (train) -- (lr);
+\draw[arr] (lr)    -- (sp);
+\draw[arr] (sp)    -- (q15);
+\draw[arr] (q15.south) -- ++(0,-3mm) -| (arduino.north);
+\draw[arr] (q15.south) -- ++(0,-3mm) -| (msp.north);
+\end{tikzpicture}
+\caption{Uçtan uca \fastgrnn{} sıkıştırma ve gömülü hedefe aktarma boru
+hattı. Kayan nokta eğitim $\rightarrow$ düşük rank $\rightarrow$
+seyrek $\rightarrow$ kalibre edilmiş Q15 ağırlıklar $\rightarrow$
+LUT aktivasyonlu taşınabilir C $\rightarrow$ Arduino ve MSP430
+ikilileri.}
+\label{fig:pipeline}
+\end{figure}
+
+\subsection{Uygulama}
+\label{sec:method:impl}
+
+Eğitim PyTorch~2.x ile yapılmıştır. Gömülü C çıkarım motoru
+(\texttt{fastgrnn.cpp}), hem \texttt{avr-gcc} (\arduino{})
+hem de Code Composer Studio \texttt{msp430-elf-gcc} (\msp{})
+altında değiştirilmeden derlenen tek bir $\sim$200 satırlık çeviri
+birimidir. Tüm ağırlıklar, tensör-başına ölçekler ve iki aktivasyon
+LUT'u ile birlikte Flash içinde \texttt{const int16\_t} dizisi
+olarak saklanır. Çalışma zamanı çalışma kümesi (gizli durum
+$\mathbf{h}$, kapı $\mathbf{z}$, aday $\tilde{\mathbf{h}}$, çıkış
+logitleri ve geçici alan) toplamda $\sim$300~bayttır ve \msp{}'nun
+512~B SRAM bütçesine rahatça sığar.

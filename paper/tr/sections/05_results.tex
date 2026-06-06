@@ -1,0 +1,287 @@
+\section{Sonuçlar}
+\label{sec:results}
+
+Sonuçları L-S-Q boru hattındaki sıraya göre raporluyoruz
+(Bölüm~\ref{sec:results:lsq}--\ref{sec:results:quant}); ardından
+gömülü hedeflerdeki çalışma davranışına geçiyoruz
+(Bölüm~\ref{sec:results:crossplatform}--\ref{sec:results:streaming}).
+Tüm deneyler Bölüm~\ref{sec:setup}'daki protokolü kullanır.
+
+\subsection{L-S-Q Boru Hattı Doğruluğu}
+\label{sec:results:lsq}
+
+Tablo~\ref{tab:lsq}, her sıkıştırma aşamasının birikimli etkisini
+özetler. Sınıflandırıcı başlığıyla birlikte tam ranklı FastGRNN
+hücresi (Bölüm~\ref{sec:method:cell}) toplam 440 parametreye
+sahiptir ve test kümesinde F1~$=$~0.912 değerine ulaşır. Düşük
+ranklı ayrıştırma ($r_w{=}2$, $r_u{=}8$), yinelemeli matris
+parametre sayısını $\mathbf{U} = \mathbf{U}_1 \mathbf{U}_2^\top$
+ayrıştırması yoluyla azaltır (beş tohum üzerinde ortalama F1,
+430 sıfır olmayan parametrede 0.879'a düşer). $s{=}0.5$ düzeyindeki
+seyrekleştirme, başka bir sınırlı düşüşle (0.856 ortalama) sayıyı
+283 sıfır olmayan parametreye indirir. Bölüm~\ref{sec:method:q15}'deki
+aktivasyon kalibrasyonu ile tensör-başına Q15 nicelendirme ise
+doğruluğu \emph{tam olarak geri kazanır}: 3{,}399 test penceresinde
+tamsayı C uygulaması PyTorch referansıyla tahminlerin \%100'ünde
+uyuşur ve C tarafındaki makro F1 \textbf{0.9176} olur.
+Şekil~\ref{fig:saturation}, sonraki tüm aşamalara temel oluşturan
+$H{=}16$ eğitim çalışmasını gösterir.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\linewidth]{figures/saturation.pdf}
+\caption{$H{=}16$ gizli boyutu için eğitim yörüngesi.
+Test F1 epoch~100 civarında doyar; en iyi tohum kontrol noktası
+(epoch~113'te F1~$=$~0.912), sonraki tüm sıkıştırma aşamaları için
+kullanılan temel modeldir.}
+\label{fig:saturation}
+\end{figure}
+
+\begin{table}[t]
+\centering
+\caption{\hapt{} üzerinde ardışık L-S-Q boru hattı. Her satır,
+belirtilen dönüşümü birikimli olarak uygular. Ortalama F1 beş tohum
+üzerindendir; son Q15 satırı gömülü hedefe aktarılan seed-0 modeli
+üzerindedir.}
+\label{tab:lsq}
+\begin{tabular}{lrrr}
+\toprule
+Aşama & F1 & Sıfır olmayan & Boyut (FP32 / Q15) \\
+\midrule
+FastGRNN tam rank ($H{=}16$)     & 0.912 & 440            & 1.8~KB \\
++ Düşük rank ($r_w{=}2$, $r_u{=}8$) & 0.879 & 430            & 1.7~KB \\
++ Seyreklik ($s{=}0.5$)            & 0.856 & 283            & 1.1~KB \\
++ Q15 (ağırlık + kalib. akt.) & \textbf{0.918} & 283   & \textbf{566~B} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Parametre bütçesini karşılaştırmalı görmek için Tablo~\ref{tab:baselines},
+gömülü hedefe aktarılan modeli aynı \hapt{} bölmesinde eğitilmiş bir MLP
+taban çizgisiyle (en hafif yinelemeli olmayan referans) ve aynı
+gizli boyuttaki LSTM ile GRU hücrelerinin kuramsal parametre
+sayılarıyla karşılaştırır. Gömülü \fastgrnn{} LSQ modeli,
+MLP taban çizgisinden \textbf{44$\times$ daha küçük} ve eşleşen
+$H$ değerinde, sınıflandırıcı ek yükünden önce, bir LSTM hücresinden
+\textbf{$\sim$5$\times$ daha küçüktür}.
+
+\begin{table}[t]
+\centering
+\caption{Gömülü hedefe aktarılan modelin, yinelemeli olmayan ve yinelemeli
+taban çizgilerine göre parametre ayak izi. LSTM ve GRU sayıları
+$H{=}16$, $d{=}3$ için kuramsaldır (yalnızca hücre); ilişkili HAR
+görevlerinde raporlanan doğrulukları \fastgrnn{} ile benzer ya da
+biraz daha yüksektir, ancak $\sim$4$\times$ parametre dezavantajı
+taşırlar~\cite{kusupati2018fastgrnn}. MLP F1 bu çalışmada
+ölçülmüştür; sınıflandırıcı başlığı her durumda 102 parametre ekler.}
+\label{tab:baselines}
+\begin{tabular}{lrr}
+\toprule
+Model & Param. (hücre) & \hapt{} F1 \\
+\midrule
+MLP taban çizgisi              & 12{,}518 (tam)  & 0.847 \\
+LSTM ($H{=}16$, kuramsal)      & 1{,}280          & --- \\
+GRU ($H{=}16$, kuramsal)       & 960              & --- \\
+\fastgrnn{} hücresi ($H{=}16$) & 338              & --- \\
+\fastgrnn{} L (düşük rank)     & 328              & 0.879 \\
+\fastgrnn{} LSQ (gömülü)          & \textbf{181}  & \textbf{0.918} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Çok Tohumlu Kararlılık ve Rank Seçimi}
+\label{sec:results:lowrank}
+
+Şekil~\ref{fig:lowrank}, yinelemeli rank değerleri
+$r_u \in \{4, 6, 8, 12\}$ için her biri beş tohumdan oluşan test-F1
+dağılımını raporlar. $r_u{=}8$ en iyi ortalamaya
+($0.879 \pm 0.056$) ve en dar kuyruğa ulaşır. Dört yapılandırmanın
+tamamında seed~$1$, ranktan bağımsız olarak tutarlı biçimde düşük
+bir aykırı değerdir ($\sim$0.71~F1). Bu, özellikle vurgulanması
+gereken bir yeniden üretilebilirlik bulgusudur: tek bir şanssız
+başlatma, küçük örneklemli bir değerlendirmeyi yanıltabilir. Bu
+model boyutunda en az beş tohum üzerinde ortalama~$\pm$~standart
+sapma raporlamak bu nedenle isteğe bağlı değildir.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\linewidth]{figures/lowrank_seeds.pdf}
+\caption{Yinelemeli rank seçimleri boyunca tohum-başına test F1.
+$r_u{=}8$ en iyi ortalamaya ve kabul edilebilir varyansa ulaşır.
+Kırmızı elmaslar rank-başına ortalamaları; yeşil bant seçilen
+yapılandırmayı gösterir.}
+\label{fig:lowrank}
+\end{figure}
+
+\subsection{Seyreklik Taraması}
+\label{sec:results:sparsity}
+
+Şekil~\ref{fig:sparsity}, sabit $r_u{=}8$ altında hedef seyreklik
+$s \in \{0.3, 0.5, 0.7, 0.9\}$ değerlerini tarar. Tek tohumlu
+tarama sığ ancak görünür bir U-eğrisi çizer: $s{=}0.5$ en fazla
+doğruluğu korur, $s{=}0.3$ eğitim maliyetini haklı çıkaracak kadar
+sıkıştırmaz ve $s \geq 0.7$ belirgin bozulmaya yol açar. Gömülü
+uygulama için en uygun nokta olan $s{=}0.5$ değerinde beş tohumlu ortalama
+$0.856 \pm 0.099$'dur; en yüksek tohum 0.92'ye ulaşır.
+$s{=}0.5$ değerindeki yüksek standart sapma, seyrekleştirilmemiş
+ortalamaya ($0.879 \pm 0.056$) göre bilgi-kuramsal sınırına yakın
+bir parametreleştirme ile çalışmanın bedelidir.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\linewidth]{figures/sparsity_curve.pdf}
+\caption{Hedef seyreklik karşısında test F1. Tek tohumlu tarama
+(mavi çizgi) ve $s{=}0.5$ için beş tohumlu ortalama $\pm$ standart
+sapma (kırmızı elmas). 0.4--0.6 bandı gömülü uygulama için en
+uygun aralıktır.}
+\label{fig:sparsity}
+\end{figure}
+
+\subsection{Nicelendirme Kipleri}
+\label{sec:results:quant}
+
+Şekil~\ref{fig:quant} ve Tablo~\ref{tab:quant}, seed-0 modelinde
+dört nicelendirme yapılandırmasını karşılaştırır. Yalnızca ağırlık
+Q15 kayıpsızdır: $\sigma$ ve $\tanh$ FP32'de çalışmayı sürdürür ve
+ağırlık nicelendirme gürültüsü, eğitim yordamının kendi tohumlar
+arası varyansının altında kalır. Kalibrasyonsuz saf Q15 aktivasyon
+nicelendirmesi yıkıcıdır: F1 0.918'den 0.16'ya çöker ve
+\textsc{standing} sınıfı tamamen kaybolur. Beş eğitim
+mini-yığınından oluşan deterministik bir ön geçiş olan tensör-başına
+aktivasyon kalibrasyonuyla Q15 çıkarımı, FP32 referans doğruluğunu
+her sınıfta yuvarlama gürültüsü düzeyinde geri kazanır. Her iki
+MCU'ya aktarılan yapılandırma budur.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\linewidth]{figures/quant_modes.pdf}
+\caption{Seed-0 modelinde nicelendirme kipleri. Yalnızca ağırlık
+Q15 kayıpsızdır; saf Q15 aktivasyonları modeli çökertir; kalibre
+edilmiş Q15 aktivasyonları referansı yuvarlama gürültüsü içinde
+geri kazanır.}
+\label{fig:quant}
+\end{figure}
+
+\begin{table}[t]
+\centering
+\caption{Nicelendirme kipinin seed-0 test F1 üzerindeki etkisi.}
+\label{tab:quant}
+\begin{tabular}{lrl}
+\toprule
+Kip & F1 & Notlar \\
+\midrule
+Float32                              & 0.918           & Referans \\
+Q15 ağırlık, FP32 akt.               & 0.918           & Kayıpsız \\
+Q15 ağırlık, \emph{saf} Q15 akt.     & 0.16            & STANDING çöküşü \\
+Q15 ağırlık, \emph{kalibre} Q15 akt. & \textbf{0.918} & \textbf{Konuşlandırılan} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Sınıf-Başına Davranış}
+\label{sec:results:perclass}
+
+Şekil~\ref{fig:perclass}, üç FP32 boru hattı aşaması ve
+gömülü Q15 model boyunca sınıf-başına F1 değerlerini izler.
+Statik sınıflar (\textsc{sitting}, \textsc{standing},
+\textsc{laying}) yüksek F1 değerlerini korur. \textsc{walking} ve
+\textsc{upstairs}, seyrekleştirme altında 1--3 yüzde puanı bozulur;
+ancak 0.88'in üzerinde kalır. \textsc{downstairs}, tüm süreç boyunca
+performansı belirleyen en zor sınıftır: düşük rank FP32'de $\sim$0.91'den seyrek
+modelde 0.89'a düşer ve kalibre edilmiş Q15 sonrasında 0.91'e geri
+döner. Bu bulgu, akıllı telefon düzeyi ivmeölçerlerde dinamik
+iniş hareketini sistematik olarak en zor sınıf olarak tanımlayan
+geniş HAR literatürüyle tutarlıdır~\cite{wang2019harsurvey,demrozi2020harsurvey}.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\linewidth]{figures/per_class_f1.pdf}
+\caption{Sıkıştırma aşamaları boyunca sınıf-başına F1 (seed~0).
+\textsc{laying} kolayca ayrılabilir; \textsc{downstairs} ise geniş
+literatürü yansıtarak süreç boyunca en zor sınıf olarak kalır.}
+\label{fig:perclass}
+\end{figure}
+
+\subsection{Platformlar Arası Deterministik Çıkarım}
+\label{sec:results:crossplatform}
+
+Aynı taşınabilir C kaynak dosyası, hem 8-bit \arduino{} hem de
+16-bit \msp{} üzerinde değiştirilmeden derlenir. 3{,}399 pencerelik
+test kümesinin tamamında tahminler olayların \%100'ünde uyuşur;
+logitler ise mutlak olarak $10^{-2}$ değerinden daha iyi düzeyde
+uyuşur (herhangi bir karar sınırı için anlamlı farkın oldukça
+altında). Tablo~\ref{tab:hstate}, tek bir akış test penceresinde
+altı zaman noktasında gizli bileşen $h_0$ değerini örnekler:
+iki platform iki ondalık basamağa kadar aynı yörüngeleri üretir.
+Bu açık bir sonuç değildir. İki aygıt farklı yazılım öykünmeli
+kayan nokta uygulamaları, farklı çağrı kuralları ve farklı sözcük
+boyutları kullanır. Buna rağmen uçtan uca tahminin bit-eşdeğer
+olması, kalibre edilmiş Q15 ağırlıklar ile FP32'de biriktirip
+sonra doyuran aritmetiğimizin uygulama ayrıntılarına karşı kararlı
+olduğunu gösterir. Bu, güvenlikle ilişkili HAR için korunmaya değer
+bir yeniden üretilebilirlik özelliğidir.
+
+\begin{table}[t]
+\centering
+\caption{50~Hz zamanlamalı tek bir akış test penceresinde
+platformlar boyunca gizli durum bileşeni $h_0$ evrimi.}
+\label{tab:hstate}
+\begin{tabular}{rrr}
+\toprule
+$t$ (örnek) & Arduino $h_0$ & MSP430 $h_0$ \\
+\midrule
+25  & $-0.720$  & $-0.720$  \\
+50  & $-0.352$  & $-0.352$  \\
+75  & $+0.459$  & $+0.459$  \\
+100 & $+3.803$  & $+3.803$  \\
+125 & $+11.388$ & $+11.388$ \\
+128 & $+12.542$ & $+12.542$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Gerçek Zamanlı Akış Performansı}
+\label{sec:results:streaming}
+
+Tablo~\ref{tab:streaming}, 50~Hz zamanlamalı akış altında
+(20~ms bütçe) örnek-başına gecikmeyi raporlar. Her iki platform da
+128 örnekli test penceresinin tamamında bütçeyi aşan örnek olmadan
+gerçek zamanlı çalışır. Arduino ortalamada bütçenin \%46'sını
+kullanır ve I\textsuperscript{2}C okumaları, LED geri bildirimi ve
+UART günlüklemesi için geniş alan bırakır. \msp{} ortalamada
+\%65 kullanır ve yine de bütçenin rahatça altında kalır.
+
+Bölüm~\ref{sec:method:lut}'deki 256 girişli sigmoid/tanh LUT,
+\msp{}'yu uygulanabilir kılan unsurdur. LUT olmadan \msp{} üzerinde
+tam pencere çıkarımı $\sim$54~s sürer; LUT ile bu süre $\sim$1.8~s'ye
+iner ve \textbf{30.5$\times$} hızlanma sağlar. Akış rejimine
+çevrildiğinde bu, tamamen gerçek zamanlı olmayan bir çalışma ile
+örnek başına yedi milisaniyelik zaman payı arasındaki
+farktır. Aynı LUT \arduino{} üzerinde de etkindir; AVR çekirdeğinde
+zaten donanım çarpıcısı bulunduğu için buradaki hızlanma daha
+sınırlıdır (1.51$\times$).
+
+\begin{table}[t]
+\centering
+\caption{50~Hz zamanlamalı akış performansı. Bütçe
+20~ms/örnektir. Her iki platformda da 256 girişli LUT etkindir.}
+\label{tab:streaming}
+\begin{tabular}{lrrrr}
+\toprule
+Platform & Ort. & Maks. & Bütçe & Aşım \\
+\midrule
+\arduino{} & 9.21 & 10 & 46\% & 0 / 128 \\
+\msp{}     & 13.0 & 14 & 65\% & 0 / 128 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\linewidth]{figures/deploy_latency.pdf}
+\caption{Üç referans platformda örnek-başına çıkarım gecikmesi.
+Kırmızı kesikli çizgi, 50~Hz örneklemenin getirdiği 20~ms bütçeyi
+gösterir. Her iki MCU hedefi de bütçenin belirgin biçimde altında
+çalışır.}
+\label{fig:latency}
+\end{figure}
