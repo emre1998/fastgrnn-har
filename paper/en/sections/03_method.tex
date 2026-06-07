@@ -179,7 +179,8 @@ for both functions in those tails. Inside the domain, a single
 linear interpolation between adjacent entries replaces the original
 transcendental, reducing each activation to one comparison, two
 indexed loads, a subtract, and a multiply-add. The two tables
-together occupy 1~KB of Flash; the result is a
+together occupy 2~KB of Flash (256 entries $\times$ 4~bytes
+$\times$ 2 tables); the result is a
 \textbf{30.5$\times$} end-to-end speedup on the \msp{}
 (Section~\ref{sec:results:streaming}).
 

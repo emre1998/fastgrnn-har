@@ -77,7 +77,7 @@ Eğer compile'da "Not enough memory" hatası alırsan optimize ederiz:
 
 | Bileşen | Flash |
 |---|---:|
-| Q15 ağırlıklar (281 nonzero × 2) | 562 byte |
+| Q15 ağırlıklar (283 nonzero × 2) | 566 byte |
 | Test verileri (2 pencere × 128 × 3 × 4) | 3072 byte |
 | Inference kodu (yaklaşık) | ~2500 byte |
 | Energia runtime + Serial | ~3000 byte |
