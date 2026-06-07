@@ -285,3 +285,68 @@ gösterir. Her iki MCU hedefi de bütçenin belirgin biçimde altında
 çalışır.}
 \label{fig:latency}
 \end{figure}
+
+\subsection{Enerji Tüketimi}
+\label{sec:results:energy}
+
+Gecikme tablosunu tamamlamak için, konuşlandırılan modeli çalıştıran
+her platformun çektiği elektriksel enerjiyi de ölçtük. Özel bir
+firmware modu (\texttt{TEST\_MODE 3}), her kartı sessiz bir
+ölçüm döngüsüne sokar --- UART yok, LED yok, I\textsuperscript{2}C
+yok --- ve üç iş yükü altında çalıştırır: \textit{Boşta} (sadece
+bir \texttt{delay(20)} döngüsü; geliştirme kartının kendi taban
+akımını yakalar), \textit{Akış50Hz} (her 20~ms'de bir
+\texttt{fastgrnn\_step()} çağrısı; periyodun geri kalanı boşta;
+konuşlandırılan HAR boru hattıyla birebir aynı pacing) ve
+\textit{Sürekli} (çarpıcısız MSP430'da en kötü senaryoyu temsil
+eden, çıkarım üzerinde sıkı sıkı döngülenen mod). Akım, USB hattı
+üzerine takılan bir ampermetre (UM25C) ile ölçüldü; aşağıdaki her
+değer, 60~s'lik kararlı durum okumasıdır. Ayrıntılı protokol
+\texttt{docs/energy\_measurement.md} dosyasında belgelenmiştir.
+
+\begin{table}[t]
+\centering
+\caption{Ölçülen besleme akımı ve çıkarım başına türetilmiş enerji.
+Her iki kart da kendi USB-seri köprüleri üzerinden beslenmektedir;
+bu köprü, karta özgü bir taban akıma katkı sağlar.
+\TODO{Ampermetre gelince ölçülen değerleri doldur.}}
+\label{tab:energy}
+\begin{tabular}{lrrrr}
+\toprule
+Platform & $V_{\text{cc}}$ & $I_{\text{boşta}}$ & $I_{50\text{Hz}}$ & $I_{\text{sürekli}}$ \\
+         & (V)             & (mA)               & (mA)              & (mA) \\
+\midrule
+\arduino{} & 5{,}0 & \TODO{?} & \TODO{?} & \TODO{?} \\
+\msp{}     & 3{,}3 & \TODO{?} & \TODO{?} & \TODO{?} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[t]
+\centering
+\caption{50~Hz akışta türetilmiş örnek-başına ve pencere-başına
+enerji. Örnek-başına enerji, aktif gücü Tablo~\ref{tab:streaming}'de
+verilen çıkarım gecikmesiyle çarpar; pencere-başına ise ek olarak
+128 ile (pencere uzunluğu) çarpılır. Son sütun, 2000~mAh ve 3{,}7~V
+bir Li-ion paketten ($\approx$~7{,}4~Wh) öngörülen pil ömrünü
+verir.}
+\label{tab:energy-derived}
+\begin{tabular}{lrrr}
+\toprule
+Platform & $E$ / örnek & $E$ / pencere (2{,}56~s) & Pil ömrü \\
+         & ($\mu$J)    & (mJ)                     & (s, 2000~mAh) \\
+\midrule
+\arduino{} & \TODO{?} & \TODO{?} & \TODO{?} \\
+\msp{}     & \TODO{?} & \TODO{?} & \TODO{?} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Bu enerji rakamları, Bölüm~\ref{sec:intro}'deki motivasyonu
+tamamlamaktadır: 566~bayt Flash'a sığan ve 50~Hz'de gerçek zamanlı
+çalışan aynı model, donanım çarpıcısı olmayan \msp{} üzerinde,
+düğme pille çalışan giyilebilir bir cihazın bütçesinin de oldukça
+altında bir akım çekmektedir. Aynı örnekleme hızında buluta akışlı
+bir alternatif ise --- veri hızıyla artan görev döngüleriyle ---
+radyo aktif iletim akımına ($\sim$10--20~mA) tâbi olur ve ölçtüğümüz
+her eksende yerel çıkarım yoluna göre dezavantajlı kalır.

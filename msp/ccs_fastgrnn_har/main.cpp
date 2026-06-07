@@ -19,7 +19,14 @@
 //   1 = TEST   (embedded test windows, full-window batch)
 //   2 = STREAM (embedded test windows, 50 Hz paced streaming sim)
 //   0 = LIVE   (MPU6050 sensor)
+//   3 = ENERGY (current/power benchmark - no UART, no I2C, no LED)
 #define TEST_MODE 0
+
+// Energy benchmark sub-mode (only used when TEST_MODE == 3):
+//   0 = IDLE       (LPM4 sleep, MCU+regulator baseline only)
+//   1 = STREAM50HZ (fastgrnn_step every 20 ms via Timer_A, idle the rest)
+//   2 = CONTINUOUS (tight loop of fastgrnn_step - worst case always-on)
+#define BENCH_MODE 1
 
 static volatile unsigned long g_millis = 0;
 
@@ -667,6 +674,27 @@ int main(void) {
 #elif TEST_MODE == 2
     serial_print("Mode: STREAM (embedded data, 50 Hz paced)\n");
     run_streaming_simulation();
+#elif TEST_MODE == 3
+    serial_print("Mode: ENERGY BENCHMARK\n");
+    // Go silent from here on so the ammeter sees only the inference cost.
+    UCA0CTL1 |= UCSWRST;            // disable USCI_A0 UART
+    P1OUT &= ~BIT0;                 // LED off
+    fastgrnn_reset();
+    static const float zero[3] = {0.0f, 0.0f, 0.0f};
+    while (1) {
+  #if BENCH_MODE == 0
+        // IDLE: low-power mode 3, only the calibration timer ticks.
+        __bis_SR_register(LPM3_bits + GIE);
+  #elif BENCH_MODE == 1
+        // STREAM50HZ: pace exactly like deployed HAR
+        unsigned long t0 = millis_ccs();
+        fastgrnn_step(zero);
+        while ((millis_ccs() - t0) < 20) { /* busy idle */ }
+  #else // BENCH_MODE == 2
+        // CONTINUOUS: tight loop, worst-case envelope
+        fastgrnn_step(zero);
+  #endif
+    }
 #else
     serial_print("Mode: LIVE (MPU6050 streaming, 50 Hz)\n");
     run_live_mode();

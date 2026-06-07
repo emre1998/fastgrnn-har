@@ -29,10 +29,17 @@
 #include <Wire.h>
 
 // Mode selection:
-//   0 = LIVE  (MPU6050 streaming, 50 Hz sampling)
-//   1 = TEST  (embedded test data, full-window batch inference)
+//   0 = LIVE   (MPU6050 streaming, 50 Hz sampling)
+//   1 = TEST   (embedded test data, full-window batch inference)
 //   2 = STREAM (embedded test data, 50 Hz paced streaming simulation)
+//   3 = ENERGY (current/power benchmark - no UART, no LED, see BENCH_MODE)
 #define TEST_MODE 0
+
+// Energy benchmark sub-mode (only used when TEST_MODE == 3):
+//   0 = IDLE       (just delay(20), measures baseline + USB bridge)
+//   1 = STREAM50HZ (fastgrnn_step every 20 ms, idle the rest - realistic HAR)
+//   2 = CONTINUOUS (tight loop of fastgrnn_step - worst case always-on)
+#define BENCH_MODE 1
 
 // LED for visual feedback (Arduino Uno pin 13)
 #define LED_PIN 13
@@ -77,6 +84,14 @@ void setup() {
 #elif TEST_MODE == 2
     Serial.println(F("STREAM (embedded data, 50 Hz paced)"));
     run_streaming_simulation();
+#elif TEST_MODE == 3
+    // After this point we stay silent (no UART, no LED, no delay logging)
+    // so the ammeter sees only the inference cost.
+    Serial.println(F("ENERGY BENCHMARK (mode " STRINGIFY(BENCH_MODE) ")"));
+    Serial.println(F("UART will go silent after this line."));
+    Serial.flush();
+    Serial.end();
+    fastgrnn_reset();
 #else
     Serial.println(F("LIVE (MPU6050 streaming, 50 Hz)"));
     Serial.print(F("Initializing MPU6050..."));
@@ -87,7 +102,30 @@ void setup() {
 #endif
 }
 
+#define STRINGIFY(x) #x
+
 void loop() {
+#if TEST_MODE == 3
+    // ============================================================
+    // ENERGY BENCHMARK - silent loop for ammeter measurement
+    // ============================================================
+    static const float zero[3] = {0.0f, 0.0f, 0.0f};
+
+  #if BENCH_MODE == 0
+    // IDLE: sleep one 20-ms tick at a time, never call the model.
+    delay(20);
+  #elif BENCH_MODE == 1
+    // STREAM50HZ: pace exactly like deployed HAR
+    unsigned long t0 = millis();
+    fastgrnn_step(zero);
+    while ((millis() - t0) < 20) { /* busy idle */ }
+  #else // BENCH_MODE == 2
+    // CONTINUOUS: pin the CPU on inference, worst-case envelope
+    fastgrnn_step(zero);
+  #endif
+    return;
+#endif
+
 #if TEST_MODE == 0
     unsigned long now = millis();
 

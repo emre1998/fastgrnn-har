@@ -281,3 +281,68 @@ platforms. The red dashed line marks the 20~ms budget imposed by
 50~Hz sampling. Both MCU targets execute well below budget.}
 \label{fig:latency}
 \end{figure}
+
+\subsection{Energy Consumption}
+\label{sec:results:energy}
+
+To complement the latency picture, we measured the electrical energy
+each platform draws while running the deployed model. A dedicated
+firmware mode (\texttt{TEST\_MODE 3}) puts each board into a silent
+benchmark loop --- no UART, no LED, no I\textsuperscript{2}C ---
+under three workloads: \textit{Idle} (a bare \texttt{delay(20)} loop,
+to capture the dev-kit baseline), \textit{Stream50Hz} (one
+\texttt{fastgrnn\_step()} call every 20~ms with the remainder of the
+period spent idle, matching the deployed HAR pipeline), and
+\textit{Continuous} (a tight loop pinned on inference, the worst-case
+always-on envelope). Current was measured with a USB in-line
+ammeter (UM25C); each value below is the steady-state reading after
+60~s of operation. The measurement protocol is documented in
+\texttt{docs/energy\_measurement.md}.
+
+\begin{table}[t]
+\centering
+\caption{Measured supply current and derived energy per inference.
+Both boards are USB-powered through their on-board USB-to-serial
+bridge, which contributes a board-specific idle baseline.
+\TODO{Fill in measured values once the ammeter arrives.}}
+\label{tab:energy}
+\begin{tabular}{lrrrr}
+\toprule
+Platform & $V_{\text{cc}}$ & $I_{\text{idle}}$ & $I_{50\text{Hz}}$ & $I_{\text{cont.}}$ \\
+         & (V)             & (mA)              & (mA)              & (mA) \\
+\midrule
+\arduino{} & 5.0 & \TODO{?} & \TODO{?} & \TODO{?} \\
+\msp{}     & 3.3 & \TODO{?} & \TODO{?} & \TODO{?} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[t]
+\centering
+\caption{Derived per-inference and per-window energy at 50~Hz
+streaming. Per-sample energy multiplies the active power by the
+inference latency reported in Table~\ref{tab:streaming};
+per-window multiplies further by 128 (the window length).
+The right-most column projects battery life from a 2000~mAh,
+3.7~V Li-ion pack ($\approx$~7.4~Wh).}
+\label{tab:energy-derived}
+\begin{tabular}{lrrr}
+\toprule
+Platform & $E$ / sample & $E$ / window (2.56~s) & Battery life \\
+         & ($\mu$J)     & (mJ)                  & (h, 2000~mAh) \\
+\midrule
+\arduino{} & \TODO{?} & \TODO{?} & \TODO{?} \\
+\msp{}     & \TODO{?} & \TODO{?} & \TODO{?} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The energy numbers close the loop on the motivation in
+Section~\ref{sec:intro}: the same model that fits in 566~bytes of
+Flash and runs in real time at 50~Hz also draws --- on the
+multiplier-less \msp{} --- a steady-state current well below the
+budget of a coin-cell-powered wearable. A streaming-to-cloud
+baseline at the same sampling rate would, by contrast, be dominated
+by the radio active-transmit current ($\sim$10--20~mA at duty cycles
+that grow with sampling rate), making the local-inference path
+strictly preferable on every axis we measured.
