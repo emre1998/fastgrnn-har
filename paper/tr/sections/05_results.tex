@@ -42,16 +42,18 @@ kullanılan temel modeldir.}
 \caption{\hapt{} üzerinde ardışık L-S-Q boru hattı. Her satır,
 belirtilen dönüşümü birikimli olarak uygular. Ortalama F1 beş tohum
 üzerindendir; son Q15 satırı gömülü hedefe aktarılan seed-0 modeli
-üzerindedir.}
+üzerindedir. Boyut sütunu ilk üç satırda FP32, son satırda Q15
+varsayar.}
 \label{tab:lsq}
-\begin{tabular}{lrrr}
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{@{}lrrr@{}}
 \toprule
-Aşama & F1 & Sıfır olmayan & Boyut (FP32 / Q15) \\
+Aşama & F1 & Param. & Boyut \\
 \midrule
-FastGRNN tam rank ($H{=}16$)     & 0.912 & 440            & 1.8~KB \\
-+ Düşük rank ($r_w{=}2$, $r_u{=}8$) & 0.879 & 430            & 1.7~KB \\
-+ Seyreklik ($s{=}0.5$)            & 0.856 & 283            & 1.1~KB \\
-+ Q15 (ağırlık + kalib. akt.) & \textbf{0.918} & 283   & \textbf{566~B} \\
+FastGRNN tam rank ($H{=}16$)        & 0.912          & 440 & 1.8~KB \\
++ Düşük rank ($r_w{=}2$, $r_u{=}8$) & 0.879          & 430 & 1.7~KB \\
++ Seyreklik ($s{=}0.5$)             & 0.856          & 283 & 1.1~KB \\
++ Q15 (ağırlık + kalib.\ akt.)      & \textbf{0.918} & 283 & \textbf{566~B} \\
 \bottomrule
 \end{tabular}
 \end{table}

@@ -41,16 +41,19 @@ subsequent compression stages.}
 \centering
 \caption{Sequential L-S-Q pipeline on \hapt{}. Each row applies the
 indicated transformation cumulatively. Mean F1 is across five
-seeds; the final Q15 line is on the deployed seed-0 model.}
+seeds; the final Q15 line is on the deployed seed-0 model.
+Weight size is FP32 for the first three rows and Q15 for the
+last row.}
 \label{tab:lsq}
-\begin{tabular}{lrrr}
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{@{}lrrr@{}}
 \toprule
-Stage & F1 & Nonzero params & Weight size (FP32 / Q15) \\
+Stage & F1 & Params & Size \\
 \midrule
-FastGRNN full-rank ($H{=}16$)     & 0.912 & 440            & 1.8~KB \\
-+ Low-rank ($r_w{=}2$, $r_u{=}8$) & 0.879 & 430            & 1.7~KB \\
-+ Sparsity ($s{=}0.5$)            & 0.856 & 283            & 1.1~KB \\
-+ Q15 (weights + calibrated acts) & \textbf{0.918} & 283   & \textbf{566~B} \\
+FastGRNN full-rank ($H{=}16$)     & 0.912          & 440 & 1.8~KB \\
++ Low-rank ($r_w{=}2$, $r_u{=}8$) & 0.879          & 430 & 1.7~KB \\
++ Sparsity ($s{=}0.5$)            & 0.856          & 283 & 1.1~KB \\
++ Q15 (weights + calib.\ acts)    & \textbf{0.918} & 283 & \textbf{566~B} \\
 \bottomrule
 \end{tabular}
 \end{table}

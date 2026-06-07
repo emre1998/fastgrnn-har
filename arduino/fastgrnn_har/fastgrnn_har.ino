@@ -28,6 +28,13 @@
 #include "MPU6050.h"
 #include <Wire.h>
 
+#if TEST_MODE == 3 && INA226_SELF_READ
+  // Pulled in only for the energy self-measurement build to avoid forcing
+  // the dependency on every user. Install via Library Manager.
+  #include <INA226_WE.h>
+  static INA226_WE ina226_self(0x40);
+#endif
+
 // Mode selection:
 //   0 = LIVE   (MPU6050 streaming, 50 Hz sampling)
 //   1 = TEST   (embedded test data, full-window batch inference)
@@ -40,6 +47,19 @@
 //   1 = STREAM50HZ (fastgrnn_step every 20 ms, idle the rest - realistic HAR)
 //   2 = CONTINUOUS (tight loop of fastgrnn_step - worst case always-on)
 #define BENCH_MODE 1
+
+// INA226 self-measurement (only used when TEST_MODE == 3):
+//   0 = silent benchmark (use this when an external INA226 host is reading)
+//   1 = Arduino reads its own INA226 every 1 s and prints a CSV line.
+//       The Serial transmit + I2C transaction add ~5 mA of constant bias to
+//       the measurement; the bias is the same in every BENCH_MODE so it
+//       cancels out in the inter-mode delta.
+//
+// REQUIREMENTS when 1:
+//   - INA226 breakout wired with its shunt in series with the Arduino's
+//     5V rail (see docs/energy_measurement.md for the diagram).
+//   - Library "INA226_WE" by Wolfgang Ewald installed via Arduino IDE.
+#define INA226_SELF_READ 0
 
 // LED for visual feedback (Arduino Uno pin 13)
 #define LED_PIN 13
@@ -85,12 +105,26 @@ void setup() {
     Serial.println(F("STREAM (embedded data, 50 Hz paced)"));
     run_streaming_simulation();
 #elif TEST_MODE == 3
-    // After this point we stay silent (no UART, no LED, no delay logging)
-    // so the ammeter sees only the inference cost.
     Serial.println(F("ENERGY BENCHMARK (mode " STRINGIFY(BENCH_MODE) ")"));
+  #if INA226_SELF_READ
+    // Self-measurement: keep UART up so we can print INA226 readings.
+    Wire.begin();
+    if (!ina226_self.init()) {
+        Serial.println(F("[ERROR] INA226 not found at 0x40. Check wiring."));
+        while (1) { digitalWrite(LED_PIN, (millis() / 100) % 2); }
+    }
+    ina226_self.setAverage(AVERAGE_16);
+    ina226_self.setConversionTime(CONV_TIME_1100);
+    ina226_self.setMeasureMode(CONTINUOUS);
+    ina226_self.setResistorRange(0.1f, 0.8f);
+    Serial.println(F("INA226 self-read enabled. CSV: t_ms,mA,mV,mW"));
+  #else
+    // External-host measurement: go fully silent so the bench reflects only
+    // the inference + idle cost.
     Serial.println(F("UART will go silent after this line."));
     Serial.flush();
     Serial.end();
+  #endif
     fastgrnn_reset();
 #else
     Serial.println(F("LIVE (MPU6050 streaming, 50 Hz)"));
@@ -107,7 +141,7 @@ void setup() {
 void loop() {
 #if TEST_MODE == 3
     // ============================================================
-    // ENERGY BENCHMARK - silent loop for ammeter measurement
+    // ENERGY BENCHMARK - tight workload loop for ammeter measurement
     // ============================================================
     static const float zero[3] = {0.0f, 0.0f, 0.0f};
 
@@ -122,6 +156,25 @@ void loop() {
   #else // BENCH_MODE == 2
     // CONTINUOUS: pin the CPU on inference, worst-case envelope
     fastgrnn_step(zero);
+  #endif
+
+  #if INA226_SELF_READ
+    // Emit one CSV reading per second. This adds a constant ~35 ms of
+    // I2C + ~5 ms of UART work per second (~4% duty cycle bias) that
+    // applies equally to every BENCH_MODE.
+    static unsigned long last_log_ms = 0;
+    unsigned long now_ms = millis();
+    if (now_ms - last_log_ms >= 1000) {
+        last_log_ms = now_ms;
+        ina226_self.readAndClearFlags();
+        Serial.print(now_ms);
+        Serial.print(',');
+        Serial.print(ina226_self.getCurrent_mA(), 3);
+        Serial.print(',');
+        Serial.print(ina226_self.getBusVoltage_V() * 1000.0f, 1);
+        Serial.print(',');
+        Serial.println(ina226_self.getBusPower(), 2);
+    }
   #endif
     return;
 #endif
