@@ -163,16 +163,25 @@ activations recover the reference within rounding noise.}
 
 \begin{table}[t]
 \centering
-\caption{Effect of quantization mode on seed-0 test F1.}
+\caption{Effect of quantization mode on seed-0 test F1, as measured
+by the PyTorch simulator (same numbers as Fig.~\ref{fig:quant}).
+The deployed C engine corresponds to the second row: Q15 weights
+combined with FP32 activations through the 256-entry LUT for
+$\sigma$ and $\tanh$. Measured separately on the same 3{,}399 test
+windows, the C-side macro F1 is \textbf{0.918} -- the headline number
+used elsewhere in the paper. The small PyTorch-vs-C gap reflects the
+LUT's preservation of activation precision; the fully-Q15 fourth row
+is the counterfactual we evaluated but did not deploy.}
 \label{tab:quant}
-\begin{tabular}{lrl}
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{@{}lrl@{}}
 \toprule
-Mode & F1 & Notes \\
+Mode & F1 & Role \\
 \midrule
-Float32                              & 0.918           & Reference \\
-Q15 weights, FP32 acts               & 0.918           & Lossless \\
-Q15 weights, \emph{naive} Q15 acts   & 0.16            & STANDING collapse \\
-Q15 weights, \emph{calibrated} Q15 acts & \textbf{0.918} & \textbf{Deployed} \\
+Float32                                 & 0.914          & Reference \\
+Q15 weights, FP32 acts (LUT)            & \textbf{0.914} & \textbf{Deployed} (C: 0.918) \\
+Q15 weights, \emph{naive} Q15 acts      & 0.16           & STANDING collapse \\
+Q15 weights, \emph{calibrated} Q15 acts & 0.913          & Counterfactual \\
 \bottomrule
 \end{tabular}
 \end{table}

@@ -166,16 +166,25 @@ geri kazanır.}
 
 \begin{table}[t]
 \centering
-\caption{Nicelendirme kipinin seed-0 test F1 üzerindeki etkisi.}
+\caption{Nicelendirme kipinin seed-0 test F1 üzerindeki etkisi (PyTorch
+simülatöründen, Şek.~\ref{fig:quant} ile aynı rakamlar). Konuşlandırılan
+C motoru ikinci satıra karşılık gelir: Q15 ağırlıklar, FP32
+aktivasyonlar ve $\sigma$/$\tanh$ için 256 girişli LUT. Aynı 3{,}399
+test penceresinde ayrıca ölçülen C-tarafı makro F1
+\textbf{0.918}'dir; makalenin başlığında kullanılan değer budur.
+Küçük PyTorch-C farkı, LUT'un aktivasyon hassasiyetini daha iyi
+korumasından kaynaklanır. Dördüncü satır ise değerlendirilen ancak
+konuşlandırılmayan tam-Q15 karşı-olgusudur.}
 \label{tab:quant}
-\begin{tabular}{lrl}
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{@{}lrl@{}}
 \toprule
-Kip & F1 & Notlar \\
+Kip & F1 & Rol \\
 \midrule
-Float32                              & 0.918           & Referans \\
-Q15 ağırlık, FP32 akt.               & 0.918           & Kayıpsız \\
-Q15 ağırlık, \emph{saf} Q15 akt.     & 0.16            & STANDING çöküşü \\
-Q15 ağırlık, \emph{kalibre} Q15 akt. & \textbf{0.918} & \textbf{Konuşlandırılan} \\
+Float32                                 & 0.914          & Referans \\
+Q15 ağırlık, FP32 akt. (LUT)            & \textbf{0.914} & \textbf{Konuşlandırılan} (C: 0.918) \\
+Q15 ağırlık, \emph{saf} Q15 akt.        & 0.16           & STANDING çöküşü \\
+Q15 ağırlık, \emph{kalibre} Q15 akt.    & 0.913          & Karşı-olgu \\
 \bottomrule
 \end{tabular}
 \end{table}
