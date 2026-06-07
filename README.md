@@ -88,11 +88,11 @@ and upload.
 fastgrnn-har/
 ├── paper/                       Full LaTeX source and PDF
 │   ├── en/                      English (canonical)
-│   │   ├── main.tex, main.pdf
+│   │   ├── fastgrnn-har-en.tex, fastgrnn-har-en.pdf
 │   │   ├── sections/            Per-section .tex sources
 │   │   ├── figures/             Auto-generated vector PDFs
 │   │   └── references.bib
-│   ├── tr/, de/                 Turkish / German translations (in progress)
+│   ├── tr/                      Turkish translation (fastgrnn-har-tr.pdf)
 │   └── scripts/make_figures.py  Figure generation from JSON results
 ├── arduino/                     Arduino Uno deployment + Python tools
 │   ├── fastgrnn_har/            Arduino sketch + headers
