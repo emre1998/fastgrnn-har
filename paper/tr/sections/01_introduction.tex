@@ -80,7 +80,7 @@ davranışını ayrıntılı biçimde incelemez.
 
 Bu makale, bare-metal MCU'larda HAR için \fastgrnn{} algoritmasının
 uçtan uca ve açık kaynaklı bir yeniden üretimini sunar. Özgün
-makalenin ötesinde üç katkı öne çıkmaktadır:
+makalenin ötesinde dört katkı öne çıkmaktadır:
 
 \begin{itemize}
 \item \textbf{Platformlar arası deterministik çıkarım.} Tek bir
@@ -94,9 +94,8 @@ uygulamalar için özellikle değerlidir.
 \item \textbf{Çarpıcısız hedefler için uygulanabilir bir arama
 tablosu yöntemi.} $[-8, +8]$ giriş aralığında tanımlanan 256 girişli
 sigmoid/tanh arama tablosu, \msp{} üzerinde tam pencere çıkarımını
-\textbf{30.5$\times$} hızlandırır (54~s $\rightarrow$ 1.8~s).
-Böylece gerçek zamanlı çalışamayan bir uygulama, 50~Hz akış
-bütçesini rahatlıkla karşılayan bir hedefe dönüşür. Bu yöntem
+\textbf{30.5$\times$} hızlandırır (54~s $\rightarrow$ 1.8~s), \%31
+bütçe başı ile 50~Hz akış hedefini mümkün kılar. Bu yöntem
 \fastgrnn{}'ya özgü değildir; $\sigma$ ya da $\tanh$ aktivasyonları
 kullanan başka yinelemeli hücrelere de uygulanabilir.
 
@@ -107,6 +106,17 @@ gözlemliyoruz. Bu davranış donanımdan değil, yinelemeli dinamiklerden
 kaynaklanır ve \fastgrnn{} sınıfı HAR sistemlerinde kullanıcıya
 yansıyan yanıt süresini belirler. Özgün makalede bu nokta ele
 alınmamıştır.
+
+\item \textbf{Donanım enerji karakterizasyonu.} INA226 donanım akım
+sensörü kullanılarak \msp{} hedef rayında ölçülen değerler:
+\textbf{17.7~mW} aktif çıkarım gücü, \textbf{$<$0.09~mW} LPM3 uyku
+gücü ve LUT etkinken 128 örneklik pencere başına \textbf{31.5~mJ}.
+LUT olmadan aynı pencere 954~mJ tüketir; bu da arama tablosunun sabit
+saat frekansında sağladığı 30.5$\times$ gecikme kazanımının doğrudan
+sonucu olan \textbf{\%96.7 enerji azalmasına} karşılık gelir. Bu
+karakterizasyon, modelin algoritmik verimliliği ile gerçek dünya güç
+zarfı arasındaki bağı kurar ve özgün makalede bulunmayan bir ölçüm
+boyutu ekler.
 \end{itemize}
 
 \noindent\textbf{Kod ve yeniden üretilebilirlik.} Kaynak kodu,
@@ -122,7 +132,7 @@ Bölüm~\ref{sec:related}, kompakt RNN ve uç-ML literatürünü özetler.
 Bölüm~\ref{sec:method}, \fastgrnn{} hücresini ve düşük ranklı,
 seyrek, nicelendirilmiş (L-S-Q) sıkıştırma boru hattını tanımlar.
 Bölüm~\ref{sec:setup} deneysel kurulumu açıklar. Bölüm~\ref{sec:results}
-doğruluk, bellek ayak izi ve gerçek zamanlı akış performansını
-raporlar. Bölüm~\ref{sec:discussion}, ısınma gecikmesini ve
+doğruluk, bellek ayak izi, gerçek zamanlı akış performansı ve donanım
+enerji karakterizasyonunu raporlar. Bölüm~\ref{sec:discussion}, ısınma gecikmesini ve
 platformlar arası determinizmi tartışır; ayrıca sınırlılıkları
 verir. Bölüm~\ref{sec:conclusion} makaleyi sonuçlandırır.

@@ -297,56 +297,66 @@ platforms. The red dashed line marks the 20~ms budget imposed by
 \subsection{Energy Consumption}
 \label{sec:results:energy}
 
-To complement the latency picture, we measured the electrical energy
-each platform draws while running the deployed model. A dedicated
-firmware mode (\texttt{TEST\_MODE 3}) puts each board into a silent
-benchmark loop --- no UART, no LED, no I\textsuperscript{2}C ---
-under three workloads: \textit{Idle} (a bare \texttt{delay(20)} loop,
-to capture the dev-kit baseline), \textit{Stream50Hz} (one
-\texttt{fastgrnn\_step()} call every 20~ms with the remainder of the
-period spent idle, matching the deployed HAR pipeline), and
-\textit{Continuous} (a tight loop pinned on inference, the worst-case
-always-on envelope). Current was measured with a USB in-line
-ammeter (UM25C); each value below is the steady-state reading after
-60~s of operation. The measurement protocol is documented in
-\texttt{docs/energy\_measurement.md}.
+To complement the latency picture, we characterize electrical energy
+on the \msp{}, the primary deployment target and the most constrained
+board in our evaluation. A dedicated firmware mode
+(\texttt{TEST\_MODE 3}) puts the board into a silent benchmark loop ---
+no UART, no LED, no I\textsuperscript{2}C --- under three workloads:
+\textit{Idle} (low-power sleep, capturing the dev-kit baseline),
+\textit{Stream50Hz} (one \texttt{fastgrnn\_step()} call every 20~ms
+with the remainder of the period spent idle, matching the deployed
+HAR pipeline), and \textit{Continuous} (a tight loop pinned on
+inference, the worst-case always-on envelope). Current was measured
+with an INA226 high-side current sensor; each value below is the
+steady-state average after 60~s of operation. The measurement
+protocol is documented in \texttt{docs/energy\_measurement.md}.
 
 \begin{table}[t]
 \centering
-\caption{Measured supply current and derived energy per inference.
-Both boards are USB-powered through their on-board USB-to-serial
-bridge, which contributes a board-specific idle baseline.
-\TODO{Fill in measured values once the ammeter arrives.}}
+\caption{Measured \msp{} supply current under silent firmware
+benchmarks (\texttt{TEST\_MODE~3}). The LaunchPad target VCC rail is
+powered through the INA226 shunt (R\,=\,0.1\,$\Omega$, addr~0x44)
+after removing the VCC jumper, so the USB/debug bridge draws no current
+from the measured rail. Values are steady-state means after 60\,s
+settling; $V_{\text{cc}}$ is the rail voltage under load. Idle is
+LPM3 sleep with Timer\_A ticking; the $<$0.025\,mA entry is below the
+INA226 resolution floor (LSB\,=\,25\,$\mu$A at this shunt).}
 \label{tab:energy}
 \begin{tabular}{lrrrr}
 \toprule
-Platform & $V_{\text{cc}}$ & $I_{\text{idle}}$ & $I_{50\text{Hz}}$ & $I_{\text{cont.}}$ \\
-         & (V)             & (mA)              & (mA)              & (mA) \\
+Build & $V_{\text{cc}}$ & $I_{\text{idle}}$ & $I_{50\text{Hz}}$ & $I_{\text{cont.}}$ \\
+      & (V)             & (mA)              & (mA)              & (mA) \\
 \midrule
-\arduino{} & 5.0 & \TODO{?} & \TODO{?} & \TODO{?} \\
-\msp{}     & 3.3 & \TODO{?} & \TODO{?} & \TODO{?} \\
+\msp{}, LUT    & 3.478 & $<$0.025 & 5.14 & 5.10 \\
+\msp{}, no LUT & 3.478 & $<$0.025 & \multicolumn{1}{c}{---} & 5.08 \\
 \bottomrule
 \end{tabular}
 \end{table}
 
 \begin{table}[t]
 \centering
-\caption{Derived per-inference and per-window energy at 50~Hz
-streaming. Per-sample energy multiplies the active power by the
-inference latency reported in Table~\ref{tab:streaming};
-per-window multiplies further by 128 (the window length).
-The right-most column projects battery life from a 2000~mAh,
-3.7~V Li-ion pack ($\approx$~7.4~Wh).}
+\caption{Derived energy for the \msp{} deployment.
+$E$/inference\,=\,$P_{\text{cont}} \times t_{\text{step}}$;
+$E$/window\,=\,$P \times T_{\text{window}}$ for the 50\,Hz streaming
+row (128 samples $\times$ 20\,ms\,=\,2.56\,s, with LPM sleep between
+steps).
+Battery life uses a 2000\,mAh / 3.7\,V Li-ion cell (7.4\,Wh).
+The no-LUT row is an ablation: without the LUT the 20\,ms streaming
+deadline is missed ($t_{\text{step}}\approx421$\,ms), so no 50\,Hz
+streaming figure exists; the continuous column quantifies the
+per-inference energy penalty.}
 \label{tab:energy-derived}
-\begin{tabular}{lrrr}
+\resizebox{\columnwidth}{!}{%
+\begin{tabular}{llrrr}
 \toprule
-Platform & $E$ / sample & $E$ / window (2.56~s) & Battery life \\
-         & ($\mu$J)     & (mJ)                  & (h, 2000~mAh) \\
+Build & Mode & $E$ / inference & $E$ / window & Battery life \\
+      &      & ($\mu$J)        & (mJ)         & (h) \\
 \midrule
-\arduino{} & \TODO{?} & \TODO{?} & \TODO{?} \\
-\msp{}     & \TODO{?} & \TODO{?} & \TODO{?} \\
+\msp{}, LUT    & 50\,Hz streaming & 246   & 31.5  & 602 \\
+\msp{}, LUT    & continuous       & 246   & ---   & 417 \\
+\msp{}, no LUT & continuous       & 7{,}440 & ---  & 419 \\
 \bottomrule
-\end{tabular}
+\end{tabular}}
 \end{table}
 
 The energy numbers close the loop on the motivation in
@@ -357,4 +367,7 @@ budget of a coin-cell-powered wearable. A streaming-to-cloud
 baseline at the same sampling rate would, by contrast, be dominated
 by the radio active-transmit current ($\sim$10--20~mA at duty cycles
 that grow with sampling rate), making the local-inference path
-strictly preferable on every axis we measured.
+strictly preferable on every axis we measured. The no-LUT continuous
+row further isolates the activation look-up table: without the LUT,
+the same firmware cannot satisfy the 50~Hz schedule, so its energy is
+reported as an ablation rather than as a deployable streaming mode.

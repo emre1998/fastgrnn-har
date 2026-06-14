@@ -10,9 +10,20 @@
 
 #include "fastgrnn.h"
 #include "model_weights.h"
-#include "lut.h"
 #include <math.h>
 #include <string.h>
+
+// USE_LUT selects the activation implementation:
+//   1 (default) = deployed 256-entry sigmoid/tanh look-up tables.
+//   0           = software expf()/tanhf(), used only for latency/energy
+//                 ablation against the LUT build.
+#ifndef USE_LUT
+#define USE_LUT 1
+#endif
+
+#if USE_LUT
+#include "lut.h"
+#endif
 
 // ============================================================================
 // Platform abstraction: AVR'da PROGMEM, host'ta direkt erisim
@@ -60,6 +71,7 @@ static inline float read_CLS_B(uint8_t c) { return (float)READ_INT16(&CLS_B[c]) 
 // Aktivasyon fonksiyonlari — LUT tabanli (expf/tanhf yerine, ~3-5x hizli)
 // ============================================================================
 // LUT input araligi: [-8, 8], 256 bucket. Disinda saturate.
+#if USE_LUT
 static inline float sigmoid_f(float x) {
     if (x <= LUT_INPUT_MIN) return 0.0f;
     if (x >= LUT_INPUT_MAX) return 1.0f;
@@ -77,6 +89,19 @@ static inline float tanh_f(float x) {
     if (idx >= LUT_SIZE) idx = LUT_SIZE - 1;
     return READ_LUT(TANH_LUT, idx);
 }
+#else
+static inline float sigmoid_f(float x) {
+    if (x <= -8.0f) return 0.0f;
+    if (x >=  8.0f) return 1.0f;
+    return 1.0f / (1.0f + expf(-x));
+}
+
+static inline float tanh_f(float x) {
+    if (x <= -8.0f) return -1.0f;
+    if (x >=  8.0f) return  1.0f;
+    return tanhf(x);
+}
+#endif // USE_LUT
 
 // ============================================================================
 // Streaming API

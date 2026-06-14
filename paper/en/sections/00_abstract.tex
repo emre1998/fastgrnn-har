@@ -26,13 +26,19 @@ Both platforms sustain \textbf{real-time 50~Hz streaming
 inference} (9.21~ms per sample on Arduino; 13~ms on MSP430), where
 a 256-entry sigmoid/tanh look-up table delivers a
 \textbf{30.5$\times$ speedup} on the multiplier-less MSP430.
-Three contributions extend the original \fastgrnn{} paper:
+Four contributions extend the original \fastgrnn{} paper:
 (i) cross-platform bit-equivalent deterministic inference;
 (ii) characterization of a $\sim$2~s recurrent warm-up latency that
-bounds end-to-end response time; and (iii) a deployable look-up-table
-recipe for multiplier-less embedded targets. Our
-results suggest that compact recurrent architectures, combined
-with calibrated quantization and look-up-table activations, can
-enable real-time on-device inference on resource-constrained
-microcontrollers without specialized accelerators.
+bounds end-to-end response time;
+(iii) a deployable look-up-table recipe for multiplier-less embedded
+targets delivering a \textbf{30.5$\times$} end-to-end speedup; and
+(iv) a hardware energy characterization showing \textbf{17.7~mW}
+active inference power, \textbf{$<$0.09~mW} idle power, and a
+\textbf{96.7\%} reduction in energy per inference window with the LUT.
+Together, these results demonstrate that compact recurrent
+architectures, combined with calibrated quantization, look-up-table
+activations, and measured energy profiling, can deliver accurate,
+memory-efficient, and energy-efficient human activity recognition on
+ultra-resource-constrained microcontrollers without specialized
+accelerators.
 \end{abstract}

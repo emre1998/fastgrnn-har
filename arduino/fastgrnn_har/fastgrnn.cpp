@@ -10,9 +10,22 @@
 
 #include "fastgrnn.h"
 #include "model_weights.h"
-#include "lut.h"
 #include <math.h>
 #include <string.h>
+
+// USE_LUT selects the activation implementation:
+//   1 (default) = 256-entry sigmoid/tanh look-up tables in Flash.
+//                 This is the deployed configuration (30.5x faster on the
+//                 multiplier-less MSP430).
+//   0           = software expf()/tanhf() from math.h. Kept only for the
+//                 energy/latency ablation in the paper ("without LUT" rows).
+#ifndef USE_LUT
+#define USE_LUT 1
+#endif
+
+#if USE_LUT
+#include "lut.h"
+#endif
 
 // ============================================================================
 // Platform abstraction: PROGMEM on AVR, direct access on host
@@ -57,9 +70,13 @@ static inline float read_CLS_W(uint8_t c, uint8_t i) {
 static inline float read_CLS_B(uint8_t c) { return (float)READ_INT16(&CLS_B[c]) * CLS_B_SCALE; }
 
 // ============================================================================
-// Activations - LUT based (replaces expf/tanhf, ~3-5x faster on AVR,
-//                          ~30x faster on the multiplier-less MSP430)
+// Activations
+//   USE_LUT=1: 256-entry tables (replaces expf/tanhf, ~3-5x faster on AVR,
+//              ~30x faster on the multiplier-less MSP430). Deployed config.
+//   USE_LUT=0: math.h software transcendentals. Ablation-only build used to
+//              quantify the LUT's latency/energy contribution.
 // ============================================================================
+#if USE_LUT
 // LUT input range: [-8, 8], 256 buckets. Inputs outside saturate.
 static inline float sigmoid_f(float x) {
     if (x <= LUT_INPUT_MIN) return 0.0f;
@@ -78,6 +95,21 @@ static inline float tanh_f(float x) {
     if (idx >= LUT_SIZE) idx = LUT_SIZE - 1;
     return READ_LUT(TANH_LUT, idx);
 }
+#else
+// Software fallback: same saturation behavior at |x| >= 8 so the two builds
+// stay numerically comparable in the tails.
+static inline float sigmoid_f(float x) {
+    if (x <= -8.0f) return 0.0f;
+    if (x >=  8.0f) return 1.0f;
+    return 1.0f / (1.0f + expf(-x));
+}
+
+static inline float tanh_f(float x) {
+    if (x <= -8.0f) return -1.0f;
+    if (x >=  8.0f) return  1.0f;
+    return tanhf(x);
+}
+#endif // USE_LUT
 
 // ============================================================================
 // Streaming API

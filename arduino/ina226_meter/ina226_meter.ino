@@ -33,8 +33,8 @@
 #include <Wire.h>
 #include <INA226_WE.h>
 
-// I2C address - INA226 breakouts default to 0x40 with A0/A1 tied to GND
-#define INA226_ADDR 0x40
+// I2C address - this breakout was observed by arduino/i2c_scanner at 0x44.
+#define INA226_ADDR 0x44
 
 INA226_WE ina226 = INA226_WE(INA226_ADDR);
 
@@ -62,9 +62,9 @@ void setup() {
     //
     //   Shunt R = 0.1 ohm (DirencNet "R100" on the breakout)
     //   Max expected current = 0.8 A  (full envelope; we stay <100 mA in practice)
-    ina226.setAverage(AVERAGE_16);
-    ina226.setConversionTime(CONV_TIME_1100);
-    ina226.setMeasureMode(CONTINUOUS);
+    ina226.setAverage(INA226_AVERAGE_16);
+    ina226.setConversionTime(INA226_CONV_TIME_1100);
+    ina226.setMeasureMode(INA226_CONTINUOUS);
     ina226.setResistorRange(0.1, 0.8);
 
     Serial.println(F("INA226 ready."));

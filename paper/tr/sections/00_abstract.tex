@@ -28,14 +28,19 @@ uyumu} gösterir. Her iki platform da \textbf{50~Hz'de gerçek
 zamanlı akış halinde çıkarım} yapabilir (Arduino'da örnek başına
 9.21~ms; MSP430'da 13~ms). Ayrıca 256 girişli sigmoid/tanh arama
 tablosu, donanım çarpıcısı bulunmayan MSP430 üzerinde
-\textbf{30.5$\times$ hızlanma} sağlar. Çalışma özgün \fastgrnn{}
-makalesini üç noktada genişletir: (i) platformlar arasında
-bit-eşdeğer deterministik çıkarım; (ii) uçtan uca yanıt süresini
-belirleyen yaklaşık 2~saniyelik yinelemeli ısınma gecikmesinin
-nicel incelenmesi; ve (iii) çarpıcısız gömülü hedeflerde
-uygulanabilir bir arama tablosu yöntemi. Sonuçlar, kompakt
-yinelemeli mimarilerin kalibre edilmiş nicelendirme ve arama tablosu
-tabanlı aktivasyonlarla birlikte, özel hızlandırıcılara gerek
-duymadan kaynak kısıtlı mikrodenetleyicilerde gerçek zamanlı
-cihaz-üstü çıkarımı mümkün kılabileceğini göstermektedir.
+\textbf{30.5$\times$ hızlanma} sağlar. Çalışma özgün \fastgrnn{} makalesini dört noktada genişletir:
+(i)~platformlar arasında bit-eşdeğer deterministik çıkarım;
+(ii)~uçtan uca yanıt süresini belirleyen yaklaşık 2~saniyelik
+yinelemeli ısınma gecikmesinin nicel incelenmesi;
+(iii)~çarpıcısız gömülü hedeflerde \textbf{30.5$\times$} uçtan uca
+hızlanma sağlayan uygulanabilir bir arama tablosu yöntemi; ve
+(iv)~donanım akım sensörü (INA226) ile gerçekleştirilen enerji
+karakterizasyonu: \textbf{17.7~mW} aktif çıkarım gücü,
+\textbf{$<$0.09~mW} uyku gücü ve arama tablosuyla çıkarım penceresi
+başına \textbf{\%96.7 enerji azalması}. Sonuçlar, kompakt yinelemeli
+mimarilerin kalibre edilmiş nicelendirme, arama tablosu tabanlı
+aktivasyonlar ve ölçülmüş enerji profili ile birlikte; doğru,
+bellek-verimli ve enerji-verimli insan aktivitesi tanımayı özel
+hızlandırıcılara gerek duymadan ultra-kısıtlı mikrodenetleyicilerde
+mümkün kılabileceğini göstermektedir.
 \end{abstract}

@@ -1,4 +1,4 @@
-# FastGRNN on Bare-Metal Microcontrollers
+# From Compression to Deployment: Real-Time and Energy-Efficient FastGRNN on Ultra-Constrained Microcontrollers
 
 End-to-end reproduction of **FastGRNN** (Kusupati et al., NeurIPS 2018) for
 real-time Human Activity Recognition (HAR), deployed on two bare-metal
@@ -114,9 +114,8 @@ If you use this work, please cite:
 ```bibtex
 @misc{kizilates2026fastgrnnharmcu,
   author = {Kızılateş, Emre Can},
-  title  = {FastGRNN on Bare-Metal Microcontrollers: An End-to-End
-            Reproduction with Low-Rank, Sparse, Quantized Inference
-            for Real-Time Human Activity Recognition},
+  title  = {From Compression to Deployment: Real-Time and Energy-Efficient
+            FastGRNN on Ultra-Constrained Microcontrollers},
   year   = {2026},
   howpublished = {\url{https://github.com/emre1998/fastgrnn-har}}
 }

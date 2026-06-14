@@ -20,13 +20,17 @@
 //   2 = STREAM (embedded test windows, 50 Hz paced streaming sim)
 //   0 = LIVE   (MPU6050 sensor)
 //   3 = ENERGY (current/power benchmark - no UART, no I2C, no LED)
+#ifndef TEST_MODE
 #define TEST_MODE 0
+#endif
 
 // Energy benchmark sub-mode (only used when TEST_MODE == 3):
 //   0 = IDLE       (LPM4 sleep, MCU+regulator baseline only)
 //   1 = STREAM50HZ (fastgrnn_step every 20 ms via Timer_A, idle the rest)
 //   2 = CONTINUOUS (tight loop of fastgrnn_step - worst case always-on)
+#ifndef BENCH_MODE
 #define BENCH_MODE 1
+#endif
 
 static volatile unsigned long g_millis = 0;
 

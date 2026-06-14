@@ -28,25 +28,22 @@
 #include "MPU6050.h"
 #include <Wire.h>
 
-#if TEST_MODE == 3 && INA226_SELF_READ
-  // Pulled in only for the energy self-measurement build to avoid forcing
-  // the dependency on every user. Install via Library Manager.
-  #include <INA226_WE.h>
-  static INA226_WE ina226_self(0x40);
-#endif
-
 // Mode selection:
 //   0 = LIVE   (MPU6050 streaming, 50 Hz sampling)
 //   1 = TEST   (embedded test data, full-window batch inference)
 //   2 = STREAM (embedded test data, 50 Hz paced streaming simulation)
 //   3 = ENERGY (current/power benchmark - no UART, no LED, see BENCH_MODE)
+#ifndef TEST_MODE
 #define TEST_MODE 0
+#endif
 
 // Energy benchmark sub-mode (only used when TEST_MODE == 3):
 //   0 = IDLE       (just delay(20), measures baseline + USB bridge)
 //   1 = STREAM50HZ (fastgrnn_step every 20 ms, idle the rest - realistic HAR)
 //   2 = CONTINUOUS (tight loop of fastgrnn_step - worst case always-on)
+#ifndef BENCH_MODE
 #define BENCH_MODE 1
+#endif
 
 // INA226 self-measurement (only used when TEST_MODE == 3):
 //   0 = silent benchmark (use this when an external INA226 host is reading)
@@ -59,7 +56,19 @@
 //   - INA226 breakout wired with its shunt in series with the Arduino's
 //     5V rail (see docs/energy_measurement.md for the diagram).
 //   - Library "INA226_WE" by Wolfgang Ewald installed via Arduino IDE.
+#ifndef INA226_SELF_READ
 #define INA226_SELF_READ 0
+#endif
+
+#define STRINGIFY_VALUE(x) #x
+#define STRINGIFY(x) STRINGIFY_VALUE(x)
+
+#if TEST_MODE == 3 && INA226_SELF_READ
+  // Pulled in only for the energy self-measurement build to avoid forcing
+  // the dependency on every user. Install via Library Manager.
+  #include <INA226_WE.h>
+  static INA226_WE ina226_self(0x40);
+#endif
 
 // LED for visual feedback (Arduino Uno pin 13)
 #define LED_PIN 13
@@ -113,9 +122,9 @@ void setup() {
         Serial.println(F("[ERROR] INA226 not found at 0x40. Check wiring."));
         while (1) { digitalWrite(LED_PIN, (millis() / 100) % 2); }
     }
-    ina226_self.setAverage(AVERAGE_16);
-    ina226_self.setConversionTime(CONV_TIME_1100);
-    ina226_self.setMeasureMode(CONTINUOUS);
+    ina226_self.setAverage(INA226_AVERAGE_16);
+    ina226_self.setConversionTime(INA226_CONV_TIME_1100);
+    ina226_self.setMeasureMode(INA226_CONTINUOUS);
     ina226_self.setResistorRange(0.1f, 0.8f);
     Serial.println(F("INA226 self-read enabled. CSV: t_ms,mA,mV,mW"));
   #else
@@ -135,8 +144,6 @@ void setup() {
     last_sample_ms = millis();
 #endif
 }
-
-#define STRINGIFY(x) #x
 
 void loop() {
 #if TEST_MODE == 3

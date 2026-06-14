@@ -12,16 +12,23 @@ ulaşır ve her iki hedefte de bütçeyi aşan örnek olmadan 50~Hz'de
 gerçek zamanlı çalışır. Tamsayı C çıkarım motoru, 8-bit AVR ve
 16-bit MSP430 uygulamaları arasında bit-eşdeğer sonuç verir.
 
-Çalışma, özgün \fastgrnn{} makalesini üç yönden genişletir:
-platformlar arası deterministik çıkarım, çarpıcısız MCU'lar için
-30.5$\times$ LUT tabanlı hızlanma ve uçtan uca yanıt süresini
+Çalışma, özgün \fastgrnn{} makalesini dört yönden genişletir:
+platformlar arası deterministik çıkarım; çarpıcısız MCU'lar için
+30.5$\times$ LUT tabanlı hızlanma; uçtan uca yanıt süresini
 belirleyen $\sim$2~s yinelemeli ısınma gecikmesinin deneysel olarak
-ölçülmesi. Bu sonuçlar daha genel bir noktaya işaret eder: küresel
-yarı iletken arzının ML talebini sınırsız biçimde daha büyük
-donanımlarla karşılayamayacağı bir dönemde, yinelemeli mimarileri
-algoritmik olarak küçültmek güçlü bir alternatiftir. Başka bir
-ifadeyle, yapay zekâyı zaten elimizde olan silikon üzerinde
-çalıştırmak mümkündür. Tüm kod, modeller ve yeniden üretim
-dosyaları Apache Lisansı 2.0 altında
+ölçülmesi; ve 17.7~mW aktif güç, $<$0.09~mW uyku gücü ve LUT ile
+pencere başına \%96.7 enerji azalması gösteren donanım enerji
+karakterizasyonu. Bu sonuçlar, Verimli Yapay Zekâ argümanını
+tamamlar: 566~bayta sıkıştırılmış ve 50~Hz'de gerçek zamanlı
+çalışan aynı model, düğme pilli bir giyilebilirin bütçesinin içinde
+kalacak şekilde enerji tüketmektedir --- modern yapay zekâ
+sistemleriyle ilişkilendirilen kaynakların çok altında kalan
+donanım üzerinde. Küresel yarı iletken arzının ML talebini sınırsız
+biçimde karşılayamayacağı bir dönemde, yinelemeli mimarilerin
+algoritmik olarak küçültülmesi --- kalibre edilmiş nicelendirme,
+arama tablosu aktivasyonları ve ölçülmüş enerji profili ile
+birleştiğinde --- güçlü ve pratik bir alternatiftir: yapay zekâyı
+zaten elimizde olan silikon üzerinde çalıştırmak. Tüm kod, modeller
+ve yeniden üretim dosyaları Apache Lisansı 2.0 altında
 \url{https://github.com/emre1998/fastgrnn-har} adresinde
 paylaşılmıştır.

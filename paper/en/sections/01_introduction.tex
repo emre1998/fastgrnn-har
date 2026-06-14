@@ -77,7 +77,7 @@ behavior.
 \subsection{Contributions}
 
 This paper delivers an end-to-end open-source reproduction of
-\fastgrnn{} for HAR on bare-metal MCUs and reports three
+\fastgrnn{} for HAR on bare-metal MCUs and reports four
 contributions beyond the original paper:
 
 \begin{itemize}
@@ -94,8 +94,9 @@ targets.} A 256-entry sigmoid/tanh look-up table over the input
 range $[-8, +8]$ accelerates full-window inference on the \msp{} by
 \textbf{30.5$\times$} (54~s $\rightarrow$ 1.8~s), turning what was
 a non-real-time deployment into a comfortable 50~Hz streaming
-target. The recipe is independent of \fastgrnn{} and applies to any
-recurrent cell that relies on $\sigma$ or $\tanh$ activations.
+target with 31\% budget headroom. The recipe is independent of
+\fastgrnn{} and applies to any recurrent cell that relies on
+$\sigma$ or $\tanh$ activations.
 
 \item \textbf{Characterization of recurrent warm-up latency.} We
 observe that prediction stability requires approximately 2~seconds
@@ -104,6 +105,17 @@ regardless of deployment target. This is a property of the
 recurrent dynamics, not the underlying hardware, and bounds the
 end-to-end user-facing response time of any \fastgrnn{}-class HAR
 system in a way that is not discussed in the original paper.
+
+\item \textbf{Hardware energy characterization.} Using a hardware
+current sensor (INA226) on the \msp{} target rail, we measure
+\textbf{17.7~mW} active inference power, \textbf{$<$0.09~mW} in
+LPM3 sleep, and \textbf{31.5~mJ} per 128-sample inference window
+with the LUT enabled. Without the LUT, the same window consumes
+954~mJ --- a \textbf{96.7\% energy reduction} attributable
+entirely to the look-up table's 30.5$\times$ latency gain at
+fixed clock frequency. This closes the loop between the model's
+algorithmic efficiency and its real-world power envelope, a
+characterization absent from the original \fastgrnn{} paper.
 \end{itemize}
 
 \noindent\textbf{Code and reproducibility.} All source code,
@@ -120,7 +132,7 @@ work. Section~\ref{sec:method} formalizes the \fastgrnn{} cell and
 the low-rank, sparse, quantized (L-S-Q) compression pipeline.
 Section~\ref{sec:setup} describes the experimental setup;
 Section~\ref{sec:results} reports accuracy, deployment footprint,
-and real-time streaming performance.
+real-time streaming performance, and hardware energy characterization.
 Section~\ref{sec:discussion} analyzes the warm-up phenomenon,
 discusses cross-platform determinism, and lists limitations.
 Section~\ref{sec:conclusion} concludes.

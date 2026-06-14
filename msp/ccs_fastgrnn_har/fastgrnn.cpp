@@ -1,42 +1,55 @@
 /*
- * fastgrnn.cpp — FastGRNN HAR inference, weights-only Q15 deployment
+ * fastgrnn.cpp - FastGRNN HAR inference, weight-only Q15 deployment
  *
- * Mimari: low-rank (r_w=2, r_u=8) + sparse %50 + Q15 ağırlıklar
- * Forward: x_t (B, D) → h_t (B, H), T=128 adim, classifier ile sinif
+ * Architecture: low-rank (r_w=2, r_u=8) + 50% sparsity + Q15 weights
+ * Forward:  x_t (B, D) -> h_t (B, H), T=128 steps, classifier on top
  *
- * Q15 dequantize: ham int16 değer × per-tensor scale = float ağırlık
- * Sparsity: 0 olan ağırlıklar zaten 0'a çarpar → ekstra is yok
+ * Q15 dequantize: raw int16 value * per-tensor scale = float weight
+ * Sparsity: zeroed weights multiply by zero anyway, no extra work
  */
 
 #include "fastgrnn.h"
 #include "model_weights.h"
-#include "lut.h"
 #include <math.h>
 #include <string.h>
 
+// USE_LUT selects the activation implementation:
+//   1 (default) = 256-entry sigmoid/tanh look-up tables in Flash.
+//                 This is the deployed configuration (30.5x faster on the
+//                 multiplier-less MSP430).
+//   0           = software expf()/tanhf() from math.h. Kept only for the
+//                 energy/latency ablation in the paper ("without LUT" rows).
+#ifndef USE_LUT
+#define USE_LUT 1
+#endif
+
+#if USE_LUT
+#include "lut.h"
+#endif
+
 // ============================================================================
-// Platform abstraction: AVR'da PROGMEM, host'ta direkt erisim
+// Platform abstraction: PROGMEM on AVR, direct access on host
 // ============================================================================
 #ifdef __AVR__
   #include <avr/pgmspace.h>
   #define READ_INT16(ptr) ((int16_t)pgm_read_word(ptr))
   #define READ_LUT(arr, idx) pgm_read_float(&(arr)[idx])
 #else
-  // Host (PC) ve MSP430: PROGMEM stub — direkt erisim
+  // Host (PC) and MSP430: PROGMEM is a no-op, access is direct
   #define READ_INT16(ptr) (*(const int16_t*)(ptr))
   #define READ_LUT(arr, idx) ((arr)[idx])
 #endif
 
 // ============================================================================
-// Persistent state (SRAM): streaming inference icin h_t saklanir
+// Persistent state (SRAM): keep h_t between streaming calls
 // ============================================================================
-static float h_state[HIDDEN_STATE_SIZE];   // 64 byte SRAM
-static float last_logits[NUM_OUTPUT_CLASSES];  // 24 byte SRAM
+static float h_state[HIDDEN_STATE_SIZE];        // 64 bytes SRAM
+static float last_logits[NUM_OUTPUT_CLASSES];   // 24 bytes SRAM
 
 // ============================================================================
-// Yardımcı: Q15 ağırlık matrisinden float değer oku
+// Helpers: read a float weight from a Q15 weight matrix
 // ============================================================================
-// 2D matris (rows × cols) için: W[i][j] → float
+// 2D matrix (rows x cols): W[i][j] -> float
 static inline float read_W1(uint8_t i, uint8_t j) {
     return (float)READ_INT16(&W1[i][j]) * W1_SCALE;
 }
@@ -57,9 +70,14 @@ static inline float read_CLS_W(uint8_t c, uint8_t i) {
 static inline float read_CLS_B(uint8_t c) { return (float)READ_INT16(&CLS_B[c]) * CLS_B_SCALE; }
 
 // ============================================================================
-// Aktivasyon fonksiyonlari — LUT tabanli (expf/tanhf yerine, ~3-5x hizli)
+// Activations
+//   USE_LUT=1: 256-entry tables (replaces expf/tanhf, ~3-5x faster on AVR,
+//              ~30x faster on the multiplier-less MSP430). Deployed config.
+//   USE_LUT=0: math.h software transcendentals. Ablation-only build used to
+//              quantify the LUT's latency/energy contribution.
 // ============================================================================
-// LUT input araligi: [-8, 8], 256 bucket. Disinda saturate.
+#if USE_LUT
+// LUT input range: [-8, 8], 256 buckets. Inputs outside saturate.
 static inline float sigmoid_f(float x) {
     if (x <= LUT_INPUT_MIN) return 0.0f;
     if (x >= LUT_INPUT_MAX) return 1.0f;
@@ -77,6 +95,21 @@ static inline float tanh_f(float x) {
     if (idx >= LUT_SIZE) idx = LUT_SIZE - 1;
     return READ_LUT(TANH_LUT, idx);
 }
+#else
+// Software fallback: same saturation behavior at |x| >= 8 so the two builds
+// stay numerically comparable in the tails.
+static inline float sigmoid_f(float x) {
+    if (x <= -8.0f) return 0.0f;
+    if (x >=  8.0f) return 1.0f;
+    return 1.0f / (1.0f + expf(-x));
+}
+
+static inline float tanh_f(float x) {
+    if (x <= -8.0f) return -1.0f;
+    if (x >=  8.0f) return  1.0f;
+    return tanhf(x);
+}
+#endif // USE_LUT
 
 // ============================================================================
 // Streaming API
@@ -86,15 +119,15 @@ void fastgrnn_reset(void) {
     memset(last_logits, 0, sizeof(last_logits));
 }
 
-// Tek bir zaman adimi: x_t (ham g cinsinden) -> h_state guncelle
+// One time step: x_t (raw, in g) updates h_state in place.
 //
-// Matematik:
-//   xn = (x_raw - mean) / std       // normalize (per-channel)
+// Math:
+//   xn = (x_raw - mean) / std       // per-channel normalize
 //   xW = xn @ W2 @ W1.T              // (H,) intermediate (low-rank distribute)
 //   hU = h_prev @ U2 @ U1.T          // (H,)
 //   pre = xW + hU
-//   z = sigmoid(pre + b_z)           // kapi
-//   h_tilde = tanh(pre + b_h)        // aday hafiza
+//   z = sigmoid(pre + b_z)           // gate
+//   h_tilde = tanh(pre + b_h)        // candidate memory
 //   h_t = (zeta*(1-z) + nu) * h_tilde + z * h_prev
 void fastgrnn_step(const float x_raw[INPUT_CHANNELS]) {
     // --- 1) Input normalize ---
@@ -103,7 +136,7 @@ void fastgrnn_step(const float x_raw[INPUT_CHANNELS]) {
         xn[i] = (x_raw[i] - INPUT_MEAN[i]) / INPUT_STD[i];
     }
 
-    // --- 2) Low-rank intermediate: xz = xn @ W2 → (R_W,) ---
+    // --- 2) Low-rank intermediate: xz = xn @ W2 -> (R_W,) ---
     // xn: (3,), W2: (3, 2), xz: (2,)
     float xz[R_W];
     for (uint8_t j = 0; j < R_W; j++) {
@@ -113,7 +146,7 @@ void fastgrnn_step(const float x_raw[INPUT_CHANNELS]) {
         }
         xz[j] = s;
     }
-    // --- 3) Hidden-to-hidden: hz = h_state @ U2 → (R_U,) ---
+    // --- 3) Hidden-to-hidden: hz = h_state @ U2 -> (R_U,) ---
     float hz[R_U];
     for (uint8_t j = 0; j < R_U; j++) {
         float s = 0.0f;
@@ -123,9 +156,9 @@ void fastgrnn_step(const float x_raw[INPUT_CHANNELS]) {
         hz[j] = s;
     }
 
-    // --- 4) FastGRNN birlestirme ---
-    // xW[16] ve hU[16] gecici dizilerini stack'te tutmak yerine her hidden
-    // unit icin dogrudan hesapla. Bu kucuk MCU'larda stack baskisini ~128 byte azaltir.
+    // --- 4) FastGRNN combination ---
+    // Compute each hidden unit directly instead of materializing xW[16] and
+    // hU[16] on the stack. This cuts stack pressure by ~128 bytes on small MCUs.
     for (uint8_t i = 0; i < HIDDEN_STATE_SIZE; i++) {
         float xw = 0.0f;
         for (uint8_t j = 0; j < R_W; j++) {
@@ -145,7 +178,7 @@ void fastgrnn_step(const float x_raw[INPUT_CHANNELS]) {
     }
 }
 
-// Mevcut h_state'ten sinif tahmini
+// Classify the current h_state.
 uint8_t fastgrnn_predict(void) {
     // logits = CLS_W @ h_state + CLS_B
     // CLS_W: (NUM_CLASSES, HIDDEN), CLS_B: (NUM_CLASSES,)
@@ -165,7 +198,7 @@ uint8_t fastgrnn_predict(void) {
     return best_c;
 }
 
-// Convenience: tek pencerede tahmin
+// Convenience: classify a full window in one call.
 uint8_t fastgrnn_classify_window(const float X[WINDOW_LEN][INPUT_CHANNELS]) {
     fastgrnn_reset();
     for (uint16_t t = 0; t < WINDOW_LEN; t++) {
