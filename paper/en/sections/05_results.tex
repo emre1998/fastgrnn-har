@@ -28,6 +28,9 @@ bare-metal \msp{} (C-engine, 100\% window agreement with PyTorch).
 The large standard deviation is driven by seed~1, a consistent
 convergence outlier visible across all stages
 (Table~\ref{tab:multiseed}, Fig.~\ref{fig:lowrank}).
+Seed~1 is the only seed whose Q15 F1 (0.663) falls below the MLP
+baseline (0.847); the remaining four seeds all exceed 0.89,
+comfortably surpassing the MLP on every compression stage.
 Fig.~\ref{fig:saturation} shows the upstream $H{=}16$ training run
 from which all subsequent stages are derived.
 
