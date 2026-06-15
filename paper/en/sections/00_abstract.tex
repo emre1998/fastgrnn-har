@@ -22,8 +22,8 @@ explicit activation calibration. The deployed model occupies \textbf{566~bytes o
 achieves \textbf{macro F1 $=$ 0.918} (seed~0; five-seed Q15
 mean $0.853{\pm}0.107$) on the \hapt{} test set.
 It matches a PyTorch reference at \textbf{100\% prediction
-agreement} across 3{,}399 test windows (seed~0; 99.91--100\%
-across five seeds).
+agreement} across 3{,}399 test windows (MCU seed~0; 99.91--100\%
+C-equivalent across five seeds).
 Both platforms sustain \textbf{real-time 50~Hz streaming
 inference} (9.21~ms per sample on Arduino; 13~ms on MSP430), where
 a 256-entry sigmoid/tanh look-up table delivers a

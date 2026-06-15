@@ -17,7 +17,7 @@ hücresi (Bölüm~\ref{sec:method:cell}) toplam 440 parametreye
 sahiptir ve test kümesinde F1~$=$~0.912 değerine ulaşır. Düşük
 ranklı ayrıştırma ($r_w{=}2$, $r_u{=}8$), yinelemeli matris
 parametre sayısını $\mathbf{U} = \mathbf{U}_1 \mathbf{U}_2^\top$
-ayrıştırması yoluyla azaltır (beş tohum üzerinde $0.879 \pm 0.052$).
+ayrıştırması yoluyla azaltır (beş tohum üzerinde $0.879 \pm 0.056$).
 $s{=}0.5$ düzeyindeki seyrekleştirme sayıyı 283 sıfır olmayan
 parametreye indirir ($0.856 \pm 0.099$ ortalama). Tensör-başına Q15
 nicelendirme, beş tohumda $\mathbf{0.853 \pm 0.107}$ makro F1
@@ -72,7 +72,7 @@ penceresi). \emph{Q15/LUT F1}: PyTorch benzetimi, Q15 ağırlık +
 kalibre aktivasyon nicelendirme (\S\ref{sec:method:q15}).
 \emph{Uyuşma}: PyTorch-FP32 ile NumPy-Q15 argmax eşleşme oranı
 (C-eşdeğer harness, bare-metal MCU değil; seed-0 MCU uyuşması
-\%100, Tablo~\ref{tab:crossplatform}). Tohum~1, tüm aşamalarda
+\%100, Tablo~\ref{tab:hstate}). Tohum~1, tüm aşamalarda
 tutarlı yakınsama aykırısıdır (bkz. Şekil~\ref{fig:lowrank});
 ortalama$\pm$SS bunu dahil eder. IHT maskesi $s{=}0.5$ seyrekliğini
 zorunlu kıldığından tüm tohumlarda sıfır olmayan sayı ve bayt
@@ -90,7 +90,7 @@ Tohum & LR F1 & Seyrek F1 & Q15/LUT F1 & Sıfır-olmayan & Bayt & Uyuşma \\
 4 & 0.904 & 0.890 & 0.904 & 283 & 566 & \%99.97 \\
 \midrule
 Ort$\pm$SS
-  & $0.879{\pm}0.052$
+  & $0.879{\pm}0.056$
   & $0.856{\pm}0.099$
   & $0.853{\pm}0.107$
   & 283 & 566 & --- \\

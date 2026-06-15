@@ -17,7 +17,7 @@ breakdown. The full-rank FastGRNN cell with classifier head
 F1~$=$~0.912 on the test set. Low-rank factorization
 ($r_w{=}2$, $r_u{=}8$) reduces the recurrent matrix
 parameter count via the $\mathbf{U} = \mathbf{U}_1 \mathbf{U}_2^\top$
-decomposition (mean F1 across five seeds: $0.879 \pm 0.052$,
+decomposition (mean F1 across five seeds: $0.879 \pm 0.056$,
 430 total parameters). Sparsification at $s{=}0.5$ further reduces to
 283 nonzero parameters ($0.856 \pm 0.099$ mean).
 Per-tensor Q15 quantization, with the activation calibration of
@@ -74,7 +74,7 @@ FastGRNN full-rank ($H{=}16$)     & 0.912          & 440 & 1.8~KB \\
 activation quantization (\S\ref{sec:method:q15}).
 \emph{Agree}: PyTorch-FP32 vs NumPy-Q15 argmax matches
 (C-equivalent harness, not bare-metal MCU; seed-0 MCU agreement
-100\% via the \msp{} C engine, Table~\ref{tab:crossplatform}).
+100\% via the \msp{} C engine, Table~\ref{tab:hstate}).
 Seed~1 is a consistent convergence outlier across all stages
 (see also Fig.~\ref{fig:lowrank}); mean$\pm$std includes it.
 All seeds share the same nonzero count and weight budget because
@@ -92,7 +92,7 @@ Seed & LR F1 & Sparse F1 & Q15/LUT F1 & Nonzero & Bytes & Agree \\
 4 & 0.904 & 0.890 & 0.904 & 283 & 566 & 99.97\% \\
 \midrule
 Mean$\pm$std
-  & $0.879{\pm}0.052$
+  & $0.879{\pm}0.056$
   & $0.856{\pm}0.099$
   & $0.853{\pm}0.107$
   & 283 & 566 & --- \\
