@@ -100,11 +100,12 @@ bütçe başı ile 50~Hz akış hedefini mümkün kılar. Bu yöntem
 \fastgrnn{}'ya özgü değildir; $\sigma$ ya da $\tanh$ aktivasyonları
 kullanan başka yinelemeli hücrelere de uygulanabilir.
 
-\item \textbf{Yinelemeli ısınma gecikmesinin ölçülmesi.} Tahminlerin
-kararlı hâle gelmesi için, donanımdan bağımsız olarak, yaklaşık
-2~saniyelik ($\sim$100 örnek, 50~Hz) gizli durum geçmişi gerektiğini
-gözlemliyoruz. Bu davranış donanımdan değil, yinelemeli dinamiklerden
-kaynaklanır ve \fastgrnn{} sınıfı HAR sistemlerinde kullanıcıya
+\item \textbf{Yinelemeli ısınma gecikmesinin ölçülmesi.} 100 rastgele
+test penceresi üzerinde, tahminlerin kararlı hâle gelmesi için gereken
+adım sayısını ölçüyoruz: \textbf{ortanca 74 örnek (1.48~s)}, en kötü
+durum 125 örnek (2.50~s, 50~Hz). Bu davranış donanımdan değil,
+yinelemeli dinamiklerden kaynaklanır ve \fastgrnn{} sınıfı HAR
+sistemlerinde kullanıcıya
 yansıyan yanıt süresini belirler. Özgün makalede bu nokta ele
 alınmamıştır.
 

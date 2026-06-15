@@ -6,19 +6,26 @@
 
 Özgün \fastgrnn{} makalesinde~\cite{kusupati2018fastgrnn} ele
 alınmayan önemli bir nokta şudur: sınıf etiketinin kararlı hâle
-gelmesi için, kullanılan donanımdan bağımsız olarak, yaklaşık iki
-saniyelik ($\sim$100 örnek, 50~Hz) gizli durum geçmişi gerekir.
+gelmesi için, kullanılan donanımdan bağımsız olarak, gizli durumun
+yeterince evrilmesi gerekmektedir.
 Şekil~\ref{fig:warmup}, tek bir \textsc{standing} penceresi boyunca
-üretilen etiketi ve $h_0$ bileşenini izler. Model, $t{=}100$
-civarında doğru sınıfa kilitlenmeden önce \textsc{walking} ve
+üretilen etiketi ve $h_0$ bileşenini izler. Model, doğru sınıfa
+kilitlenmeden önce \textsc{walking} ve
 \textsc{upstairs} tahminlerinden geçer. Bu davranış iki MCU'dan
 birine özgü değildir; Arduino ve MSP430 aynı yörüngeleri üretir
 (Bölüm~\ref{sec:results:crossplatform}).
 
+Dağılımı nicelendirmek için dağıtılan seed-0 modelini 100 rastgele
+test penceresi üzerinde değerlendirdik ve her pencere için, adım-adım
+tahminlerin son-pencere tahminiyle kalıcı olarak örtüştüğü ilk adım
+$t^*$'yi ölçtük. \textbf{Ortanca kararlılaşma noktası 74 örnektir
+(1.48~s)}, IQR 40--86 örnek (0.79--1.72~s), en kötü durum ise
+125 örnek (2.50~s, 50~Hz) olarak bulunmuştur.
+
 Düşme algılama, jest tanıma ya da duruş koçluğu gibi kullanıcıya
-dönük uygulamalarda bu bulgu önemlidir. Aktivite \emph{geçişleri},
-ancak gerçekleştikten yaklaşık 2~s sonra güvenle doğrulanabilir. Bu
-kayda değer bir gecikmedir; cihaz-üstü RNN'ler değerlendirilirken
+dönük uygulamalarda bu bulgu önemlidir: aktivite \emph{geçişleri}
+ortanca 1.5~s, en kötü durumda 2.5~s sonra güvenle doğrulanabilir.
+Bu kayda değer bir gecikmedir; cihaz-üstü RNN'ler değerlendirilirken
 örnek-başına hızın yanında ayrıca raporlanmalıdır. Benzer
 büyüklükteki başka kapılı yinelemeli hücrelerde de aynı etkinin
 görülebileceğini düşünüyoruz. Bunu eşleşen parametre sayılarında
@@ -29,8 +36,10 @@ LSTM/GRU taban çizgileriyle sınamak doğal bir devam çalışmasıdır.
 \includegraphics[width=\linewidth]{figures/warmup_curve.pdf}
 \caption{Tek bir 2.56~s pencerede (50~Hz, \textsc{standing} gerçek
 etiketi) gizli durum bileşeni $h_0$ ve üretilen sınıf etiketi.
-Arduino ve MSP430 aynı yörüngeleri üretir. Yaklaşık 2~s geçmiş
-birikene kadar sınıf etiketi kararsızdır.}
+Arduino ve MSP430 aynı yörüngeleri üretir. Sınıf etiketi yinelemeli
+ısınma süresince kararsızdır; 100 rastgele test penceresi üzerinde
+ortanca kararlılaşma noktası 74 örnek (1.48~s), en kötü durum ise
+125 örnek (2.50~s)'dir.}
 \label{fig:warmup}
 \end{figure}
 

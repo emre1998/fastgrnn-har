@@ -100,8 +100,9 @@ target with 31\% budget headroom. The recipe is independent of
 $\sigma$ or $\tanh$ activations.
 
 \item \textbf{Characterization of recurrent warm-up latency.} We
-observe that prediction stability requires approximately 2~seconds
-($\sim$100 samples at 50~Hz) of recurrent hidden-state evolution
+quantify, over 100 random test windows, that prediction stability
+requires a \textbf{median of 74 samples (1.48~s)} of recurrent
+hidden-state evolution, with a worst-case of 125 samples (2.50~s),
 regardless of deployment target. This is a property of the
 recurrent dynamics, not the underlying hardware, and bounds the
 end-to-end user-facing response time of any \fastgrnn{}-class HAR

@@ -30,7 +30,8 @@ a 256-entry sigmoid/tanh look-up table delivers a
 \textbf{30.5$\times$ speedup} on the multiplier-less MSP430.
 Four contributions extend the original \fastgrnn{} paper:
 (i) cross-platform bit-equivalent deterministic inference;
-(ii) characterization of a $\sim$2~s recurrent warm-up latency that
+(ii) characterization of recurrent warm-up latency (median 74 samples,
+1.48~s; worst-case 125 samples, 2.50~s over 100 test windows) that
 bounds end-to-end response time;
 (iii) a deployable look-up-table recipe for multiplier-less embedded
 targets delivering a \textbf{30.5$\times$} end-to-end speedup; and

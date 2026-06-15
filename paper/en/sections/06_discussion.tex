@@ -6,24 +6,33 @@
 
 A finding not discussed in the original \fastgrnn{}
 paper~\cite{kusupati2018fastgrnn} is that prediction stability
-requires roughly two seconds ($\sim$100 samples at 50~Hz) of
-hidden-state evolution before the emitted class label settles,
+requires a non-trivial number of samples of hidden-state
+evolution before the emitted class label settles,
 regardless of the underlying deployment target. Fig.~\ref{fig:warmup}
 traces the emitted label and the $h_0$ component over a single
 \textsc{standing} window: the model passes through \textsc{walking}
 and \textsc{upstairs} predictions before locking onto the correct
-class around $t{=}100$. This is a property of the recurrent
+class. This is a property of the recurrent
 dynamics, not of either MCU; both Arduino and MSP430 produce
 identical trajectories (Section~\ref{sec:results:crossplatform}).
 
+To quantify the distribution, we evaluated 100 randomly sampled test
+windows using the deployed seed-0 model and measured, for each window,
+the first step $t^*$ at which the per-step prediction matches the
+final-window prediction and remains stable for all subsequent steps.
+The \textbf{median stabilization point is 74 samples (1.48~s)},
+with an IQR of 40--86 samples (0.79--1.72~s) and a worst-case of
+125 samples (2.50~s at 50~Hz).
+
 For user-facing applications -- fall detection, gesture recognition,
 posture coaching -- this implies that activity \emph{transitions}
-are confirmed only $\sim$2~s after they occur. This is a
-non-trivial latency budget and should be reported alongside
-per-sample throughput when characterizing on-device RNNs. We
-hypothesize the same effect occurs in other gated recurrent cells
-of comparable size; verifying this on LSTM/GRU baselines at
-matched parameter counts is an obvious follow-up.
+are confirmed with a median latency of $\sim$1.5~s and a worst-case
+of $\sim$2.5~s after they occur. This is a non-trivial latency budget
+and should be reported alongside per-sample throughput when
+characterizing on-device RNNs. We hypothesize the same effect occurs
+in other gated recurrent cells of comparable size; verifying this on
+LSTM/GRU baselines at matched parameter counts is an obvious
+follow-up.
 
 \begin{figure}[t]
 \centering
@@ -31,7 +40,9 @@ matched parameter counts is an obvious follow-up.
 \caption{Hidden-state component $h_0$ and emitted class label over
 a single 2.56~s window (50~Hz, \textsc{standing} ground truth).
 Both Arduino and MSP430 produce identical trajectories. The class
-label is unstable until $\sim$2~s of history accumulates.}
+label is unstable during the recurrent warm-up; over 100 random
+test windows the median stabilization point is 74 samples (1.48~s),
+with a worst-case of 125 samples (2.50~s).}
 \label{fig:warmup}
 \end{figure}
 
