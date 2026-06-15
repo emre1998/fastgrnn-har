@@ -18,12 +18,12 @@ low end of the available silicon supply: the 8-bit \arduino{}
 16~KB Flash; 512~B SRAM). Our compression pipeline combines
 low-rank weight factorization, iterative hard-thresholding
 sparsity, and per-tensor Q15 post-training quantization with
-explicit activation calibration. The deployed model occupies
-\textbf{566~bytes of weights}, achieves \textbf{macro F1 $=$ 0.918}
-(seed~0 deployed; five-seed Q15 mean $0.853{\pm}0.107$) on the
-\hapt{} test set, and matches a PyTorch reference at
-\textbf{100\% prediction agreement} (seed~0; 99.91--100\%
-across five seeds) across 3{,}399 test windows.
+explicit activation calibration. The deployed model occupies \textbf{566~bytes of weights} and
+achieves \textbf{macro F1 $=$ 0.918} (seed~0; five-seed Q15
+mean $0.853{\pm}0.107$) on the \hapt{} test set.
+It matches a PyTorch reference at \textbf{100\% prediction
+agreement} across 3{,}399 test windows (seed~0; 99.91--100\%
+across five seeds).
 Both platforms sustain \textbf{real-time 50~Hz streaming
 inference} (9.21~ms per sample on Arduino; 13~ms on MSP430), where
 a 256-entry sigmoid/tanh look-up table delivers a

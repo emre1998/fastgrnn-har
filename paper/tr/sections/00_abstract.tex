@@ -20,13 +20,12 @@ ekosisteminin alt ucunu temsil eden iki bare-metal hedefte
 boru hattı düşük ranklı ağırlık ayrıştırmasını, iteratif sert
 eşikleme ile seyreklik kazandırmayı ve açık aktivasyon kalibrasyonu
 içeren tensör-başına Q15 eğitim-sonrası nicelendirmeyi bir araya
-getirir. Ortaya çıkan modelin ağırlıkları yalnızca
-\textbf{566~bayt} yer kaplar; model \hapt{} test kümesinde
-\textbf{makro F1 $=$ 0.918} (0.~tohum, dağıtılan model;
-beş tohumda Q15 ortalaması $0.853{\pm}0.107$) değerine ulaşır
-ve 3{,}399 test penceresinin tamamında PyTorch referansıyla
-\textbf{\%100 tahmin uyumu} (0.~tohum; beş tohumda \%99.91--100)
-gösterir. Her iki platform da \textbf{50~Hz'de gerçek
+getirir. Ortaya çıkan modelin ağırlıkları yalnızca \textbf{566~bayt} yer
+kaplar ve \hapt{} test kümesinde \textbf{makro F1 $=$ 0.918}
+(0.~tohum; beş tohumda Q15 ortalaması $0.853{\pm}0.107$) değerine
+ulaşır. Model, 3{,}399 test penceresinin tamamında PyTorch
+referansıyla \textbf{\%100 tahmin uyumu} gösterir (0.~tohum;
+beş tohumda \%99.91--100). Her iki platform da \textbf{50~Hz'de gerçek
 zamanlı akış halinde çıkarım} yapabilir (Arduino'da örnek başına
 9.21~ms; MSP430'da 13~ms). Ayrıca 256 girişli sigmoid/tanh arama
 tablosu, donanım çarpıcısı bulunmayan MSP430 üzerinde

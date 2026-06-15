@@ -14,21 +14,14 @@ integer C inference engine is bit-equivalent across 8-bit AVR and
 
 Four contributions extend the original \fastgrnn{} paper:
 cross-platform deterministic inference, a 30.5$\times$ LUT-based
-speedup for multiplier-less MCUs, an empirical characterization of the recurrent warm-up latency
-(median 74 samples / 1.48~s; worst-case 2.50~s) that bounds
-end-to-end response time, and a hardware energy characterization showing
-17.7~mW active power, $<$0.09~mW idle power, and a 96.7\% reduction
-in per-window inference energy enabled by the LUT. Taken together,
-these results close the loop on the Efficient AI argument: the same
-model that fits in 566~bytes of weights and runs in real time at
-50~Hz also draws a power envelope well within the budget of a
-coin-cell-powered wearable --- on hardware several orders of
-magnitude below the resources commonly associated with modern AI
-systems. In a period when the global semiconductor supply cannot
-indefinitely scale up to meet ML demand, algorithmic refactoring of
-recurrent architectures --- combined with calibrated quantization,
-look-up-table activations, and measured energy profiling --- is a
-credible and practical alternative: AI that runs on the silicon we
+speedup for multiplier-less MCUs, empirical characterization of the
+recurrent warm-up latency (median 74 samples / 1.48~s; worst-case
+2.50~s), and a hardware energy characterization showing 17.7~mW
+active power, $<$0.09~mW idle power, and a 96.7\% reduction in
+per-window energy enabled by the LUT. A 566-byte model running at
+50~Hz with a coin-cell power budget is a concrete existence proof
+that calibrated quantization, look-up-table activations, and
+measured energy profiling can bring recurrent HAR to the silicon we
 already have. All code, models, and reproducibility artifacts are
 publicly available at \url{https://github.com/emre1998/fastgrnn-har}
 under the Apache License 2.0.
