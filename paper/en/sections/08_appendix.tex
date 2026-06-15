@@ -10,6 +10,7 @@ five training seeds.
 \caption{Training and deployment hyperparameters for the deployed
 \fastgrnn{} model.}
 \label{tab:hyper}
+\resizebox{\columnwidth}{!}{%
 \begin{tabular}{lr}
 \toprule
 Parameter & Value \\
@@ -40,7 +41,7 @@ Activation quantization          & per-tensor Q15 + calibration \\
 Calibration mini-batches         & 5 \\
 Calibration headroom             & 10\% \\
 \bottomrule
-\end{tabular}
+\end{tabular}}
 \end{table}
 
 \section{Q15 Quantization Implementation}
