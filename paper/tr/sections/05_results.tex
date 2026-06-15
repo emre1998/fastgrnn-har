@@ -11,19 +11,21 @@ Tüm deneyler Bölüm~\ref{sec:setup}'daki protokolü kullanır.
 \label{sec:results:lsq}
 
 Tablo~\ref{tab:lsq}, her sıkıştırma aşamasının birikimli etkisini
-özetler. Sınıflandırıcı başlığıyla birlikte tam ranklı FastGRNN
+özetler; Tablo~\ref{tab:multiseed} tohum bazlı tam dökümü verir.
+Sınıflandırıcı başlığıyla birlikte tam ranklı FastGRNN
 hücresi (Bölüm~\ref{sec:method:cell}) toplam 440 parametreye
 sahiptir ve test kümesinde F1~$=$~0.912 değerine ulaşır. Düşük
 ranklı ayrıştırma ($r_w{=}2$, $r_u{=}8$), yinelemeli matris
 parametre sayısını $\mathbf{U} = \mathbf{U}_1 \mathbf{U}_2^\top$
-ayrıştırması yoluyla azaltır (beş tohum üzerinde ortalama F1,
-430 sıfır olmayan parametrede 0.879'a düşer). $s{=}0.5$ düzeyindeki
-seyrekleştirme, başka bir sınırlı düşüşle (0.856 ortalama) sayıyı
-283 sıfır olmayan parametreye indirir. Bölüm~\ref{sec:method:q15}'deki
-aktivasyon kalibrasyonu ile tensör-başına Q15 nicelendirme ise
-doğruluğu \emph{tam olarak geri kazanır}: 3{,}399 test penceresinde
-tamsayı C uygulaması PyTorch referansıyla tahminlerin \%100'ünde
-uyuşur ve C tarafındaki makro F1 \textbf{0.9176} olur.
+ayrıştırması yoluyla azaltır (beş tohum üzerinde $0.879 \pm 0.052$).
+$s{=}0.5$ düzeyindeki seyrekleştirme sayıyı 283 sıfır olmayan
+parametreye indirir ($0.856 \pm 0.099$ ortalama). Tensör-başına Q15
+nicelendirme, beş tohumda $\mathbf{0.853 \pm 0.107}$ makro F1
+verir; gömülü seed-0 modeli bare-metal \msp{} üzerinde
+\textbf{0.9176} F1'e ulaşır (C motoru, PyTorch ile \%100 pencere
+uyuşması). Büyük standart sapma, tüm aşamalarda tutarlı biçimde
+düşük kalan tohum~1 yakınsama aykırısından kaynaklanır
+(Tablo~\ref{tab:multiseed}, Şekil~\ref{fig:lowrank}).
 Şekil~\ref{fig:saturation}, sonraki tüm aşamalara temel oluşturan
 $H{=}16$ eğitim çalışmasını gösterir.
 
@@ -40,15 +42,17 @@ kullanılan temel modeldir.}
 \begin{table}[t]
 \centering
 \caption{\hapt{} üzerinde ardışık L-S-Q boru hattı. Her satır,
-belirtilen dönüşümü birikimli olarak uygular. Ortalama F1 beş tohum
-üzerindendir; son Q15 satırı gömülü hedefe aktarılan seed-0 modeli
-üzerindedir. Boyut sütunu ilk üç satırda FP32, son satırda Q15
-varsayar.}
+belirtilen dönüşümü birikimli olarak uygular. \emph{Sıfır-olmayan},
+hücre ve yoğun sınıflandırıcı başlığı dahil tüm sıfır olmayan
+parametreleri sayar; başlık her aşamada 102 yoğun parametre katar.
+Ortalama F1 beş tohum üzerindendir; son Q15 satırı gömülü hedefe
+aktarılan seed-0 modeli üzerindedir. Boyut ilk üç satırda FP32,
+son satırda Q15'tir.}
 \label{tab:lsq}
 \setlength{\tabcolsep}{4pt}
 \begin{tabular}{@{}lrrr@{}}
 \toprule
-Aşama & F1 & Param. & Boyut \\
+Aşama & F1 & Sıfır-olmayan & Boyut \\
 \midrule
 FastGRNN tam rank ($H{=}16$)        & 0.912          & 440 & 1.8~KB \\
 + Düşük rank ($r_w{=}2$, $r_u{=}8$) & 0.879          & 430 & 1.7~KB \\
@@ -56,6 +60,39 @@ FastGRNN tam rank ($H{=}16$)        & 0.912          & 440 & 1.8~KB \\
 + Q15 (ağırlık + kalib.\ akt.)      & \textbf{0.918} & 283 & \textbf{566~B} \\
 \bottomrule
 \end{tabular}
+\end{table}
+
+\begin{table}[t]
+\centering
+\caption{\hapt{} üzerinde tohum bazlı L-S-Q boru hattı (3{,}399 test
+penceresi). \emph{Q15/LUT F1}: PyTorch benzetimi, Q15 ağırlık +
+kalibre aktivasyon nicelendirme (\S\ref{sec:method:q15}).
+\emph{Uyuşma}: PyTorch-FP32 ile NumPy-Q15 argmax eşleşme oranı
+(C-eşdeğer harness, bare-metal MCU değil; seed-0 MCU uyuşması
+\%100, Tablo~\ref{tab:crossplatform}). Tohum~1, tüm aşamalarda
+tutarlı yakınsama aykırısıdır (bkz. Şekil~\ref{fig:lowrank});
+ortalama$\pm$SS bunu dahil eder. IHT maskesi $s{=}0.5$ seyrekliğini
+zorunlu kıldığından tüm tohumlarda sıfır olmayan sayı ve bayt
+aynıdır.}
+\label{tab:multiseed}
+\resizebox{\columnwidth}{!}{%
+\begin{tabular}{@{}crrrrrr@{}}
+\toprule
+Tohum & LR F1 & Seyrek F1 & Q15/LUT F1 & Sıfır-olmayan & Bayt & Uyuşma \\
+\midrule
+0 & 0.918 & 0.921 & 0.913 & 283 & 566 & \%99.97 \\
+1 & 0.781 & 0.680 & 0.663 & 283 & 566 & \%99.91 \\
+2 & 0.901 & 0.893 & 0.895 & 283 & 566 & \%99.97 \\
+3 & 0.890 & 0.895 & 0.891 & 283 & 566 & \%100.0 \\
+4 & 0.904 & 0.890 & 0.904 & 283 & 566 & \%99.97 \\
+\midrule
+Ort$\pm$SS
+  & $0.879{\pm}0.052$
+  & $0.856{\pm}0.099$
+  & $0.853{\pm}0.107$
+  & 283 & 566 & --- \\
+\bottomrule
+\end{tabular}}
 \end{table}
 
 Parametre bütçesini karşılaştırmalı görmek için Tablo~\ref{tab:baselines},
@@ -75,7 +112,9 @@ $H{=}16$, $d{=}3$ için kuramsaldır (yalnızca hücre); ilişkili HAR
 görevlerinde raporlanan doğrulukları \fastgrnn{} ile benzer ya da
 biraz daha yüksektir, ancak $\sim$4$\times$ parametre dezavantajı
 taşırlar~\cite{kusupati2018fastgrnn}. MLP F1 bu çalışmada
-ölçülmüştür; sınıflandırıcı başlığı her durumda 102 parametre ekler.}
+ölçülmüştür; sınıflandırıcı başlığı her durumda 102 parametre ekler.
+\fastgrnn{} için: 181 hücre $+$ 102 başlık $=$ 283 toplam
+sıfır-olmayan $\times$ 2~B $=$ 566~B.}
 \label{tab:baselines}
 \begin{tabular}{lrr}
 \toprule

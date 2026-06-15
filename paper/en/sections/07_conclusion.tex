@@ -6,7 +6,8 @@ microcontrollers -- the 8-bit \arduino{} and the 16-bit
 multiplier-less \msp{} -- and demonstrated that compact gated
 recurrent cells are a practical fit for kilobyte-class wearable
 HAR. The deployed model occupies 566~bytes of weights, achieves
-macro F1~$=$~0.918 on the \hapt{} benchmark, and runs in real time
+macro F1~$=$~0.918 (seed~0) on the \hapt{} test set --- with a
+five-seed Q15 mean of $0.853{\pm}0.107$ --- and runs in real time
 at 50~Hz on both targets with zero over-budget samples. The
 integer C inference engine is bit-equivalent across 8-bit AVR and
 16-bit MSP430 implementations.
