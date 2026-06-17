@@ -1,5 +1,7 @@
 # From Compression to Deployment: Real-Time and Energy-Efficient FastGRNN on Ultra-Constrained Microcontrollers
 
+[![arXiv](https://img.shields.io/badge/arXiv-2606.17249-b31b1b.svg)](https://arxiv.org/abs/2606.17249)
+
 End-to-end reproduction of **FastGRNN** (Kusupati et al., NeurIPS 2018) for
 real-time Human Activity Recognition (HAR), deployed on two bare-metal
 microcontroller targets:
@@ -32,9 +34,11 @@ reference at **100% agreement** across 3,399 test windows.
                                                      scale            (AVR + MSP430)
 ```
 
+**Preprint:** [arXiv:2606.17249](https://arxiv.org/abs/2606.17249)
+
 See [`paper/en/fastgrnn-har-en.pdf`](paper/en/fastgrnn-har-en.pdf) for the full write-up,
 including a deployable LUT recipe for multiplier-less MCUs and a
-characterization of the ~2 s recurrent warm-up latency.
+characterization of the recurrent warm-up latency (median 74 samples / 1.48 s).
 
 ## Quick Start
 
@@ -113,11 +117,14 @@ If you use this work, please cite:
 
 ```bibtex
 @misc{kizilates2026fastgrnnharmcu,
-  author = {Kızılateş, Emre Can},
-  title  = {From Compression to Deployment: Real-Time and Energy-Efficient
-            FastGRNN on Ultra-Constrained Microcontrollers},
-  year   = {2026},
-  howpublished = {\url{https://github.com/emre1998/fastgrnn-har}}
+  author        = {Kızılateş, Emre Can},
+  title         = {From Compression to Deployment: Real-Time and Energy-Efficient
+                   FastGRNN on Ultra-Constrained Microcontrollers},
+  year          = {2026},
+  eprint        = {2606.17249},
+  archivePrefix = {arXiv},
+  primaryClass  = {cs.AR},
+  url           = {https://arxiv.org/abs/2606.17249}
 }
 ```
 
