@@ -30,22 +30,36 @@ parser.add_argument("--epochs", type=int, default=120)
 parser.add_argument("--lr", type=float, default=1e-3)
 parser.add_argument("--models", nargs="+", default=["fastgrnn", "gru", "lstm"])
 parser.add_argument("--seeds", nargs="+", type=int, default=[0, 1, 2, 3, 4])
+parser.add_argument("--data", default="data/processed/hapt_windows.npz",
+                    help="windowed npz (X_train/y_train/subjects_train/...)")
+parser.add_argument("--tag", default=None,
+                    help="dataset tag for output filenames (default: derived from --data)")
+parser.add_argument("--val_holdout", type=int, default=4,
+                    help="number of training subjects held out for validation")
 args = parser.parse_args()
 
-NUM_CLASSES = 6
-CLASS_NAMES = ["WALKING", "UPSTAIRS", "DOWNSTAIRS", "SITTING", "STANDING", "LAYING"]
+TAG = args.tag or Path(args.data).stem.replace("_windows", "")
+DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+print(f"Dataset tag: {TAG} | Device: {DEVICE}")
 
 # ----------------------------------------------------------------------------
-# Data — identical pipeline to train_fastgrnn.py
+# Data — identical pipeline to train_fastgrnn.py (dataset-parameterized)
 # ----------------------------------------------------------------------------
-data = np.load("data/processed/hapt_windows.npz", allow_pickle=True)
+data = np.load(args.data, allow_pickle=True)
 X_tr, y_tr, s_tr = data["X_train"], data["y_train"], data["subjects_train"]
 X_te, y_te = data["X_test"], data["y_test"]
 y_tr = y_tr - 1
 y_te = y_te - 1
 
+NUM_CLASSES = int(max(y_tr.max(), y_te.max())) + 1
+if "activity_labels" in data:
+    CLASS_NAMES = [str(s).split(" ", 1)[-1] for s in data["activity_labels"]]
+else:
+    CLASS_NAMES = [f"class{i}" for i in range(NUM_CLASSES)]
+print(f"NUM_CLASSES={NUM_CLASSES} | classes={CLASS_NAMES}")
+
 uniq = sorted(set(s_tr.tolist()))
-val_subjects = set(uniq[-4:])
+val_subjects = set(uniq[-args.val_holdout:])
 val_mask = np.array([s in val_subjects for s in s_tr])
 X_trn, y_trn = X_tr[~val_mask], y_tr[~val_mask]
 X_val, y_val = X_tr[val_mask], y_tr[val_mask]
@@ -98,12 +112,13 @@ def evaluate(model, loader):
     all_pred, all_true = [], []
     correct, total = 0, 0
     for x, y in loader:
+        x, y = x.to(DEVICE), y.to(DEVICE)
         logits = model(x)
         pred = logits.argmax(dim=1)
         correct += (pred == y).sum().item()
         total += len(y)
-        all_pred.append(pred.numpy())
-        all_true.append(y.numpy())
+        all_pred.append(pred.cpu().numpy())
+        all_true.append(y.cpu().numpy())
     y_pred = np.concatenate(all_pred)
     y_true = np.concatenate(all_true)
     return correct / total, f1_score(y_true, y_pred, average="macro"), y_true, y_pred
@@ -111,7 +126,7 @@ def evaluate(model, loader):
 
 def train_one(kind, seed, epochs, lr, hidden):
     Path("experiments").mkdir(exist_ok=True)
-    out = f"experiments/baseline_{kind}_h{hidden}_s{seed}_e{epochs}.json"
+    out = f"experiments/baseline_{TAG}_{kind}_h{hidden}_s{seed}_e{epochs}.json"
     if Path(out).exists():
         with open(out) as f:
             result = json.load(f)
@@ -121,7 +136,7 @@ def train_one(kind, seed, epochs, lr, hidden):
 
     torch.manual_seed(seed)
     np.random.seed(seed)
-    model = build_model(kind, hidden)
+    model = build_model(kind, hidden).to(DEVICE)
     n_params = sum(p.numel() for p in model.parameters())
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
 
@@ -129,6 +144,7 @@ def train_one(kind, seed, epochs, lr, hidden):
     for epoch in range(1, epochs + 1):
         model.train()
         for x, y in train_loader:
+            x, y = x.to(DEVICE), y.to(DEVICE)
             optimizer.zero_grad()
             loss = criterion(model(x), y)
             loss.backward()
@@ -180,7 +196,9 @@ def main():
               f"(params {n_params})\n")
 
     Path("experiments").mkdir(exist_ok=True)
-    with open("experiments/baseline_tier1_summary.json", "w") as f:
+    summary_path = (f"experiments/baseline_tier1_summary.json" if TAG == "hapt"
+                    else f"experiments/baseline_tier1_{TAG}_summary.json")
+    with open(summary_path, "w") as f:
         json.dump(summary, f, indent=2)
 
     print("\n=== TIER 1 SUMMARY (matched H, FP32) ===")
@@ -189,7 +207,7 @@ def main():
         seeds_str = " ".join(f"{v:.3f}" for v in s["per_seed_f1"])
         print(f"{kind:10s} {s['n_params']:7d} {s['mean_f1']:9.4f} "
               f"{s['std_f1']:7.4f}   [{seeds_str}]")
-    print("\nSaved: experiments/baseline_tier1_summary.json")
+    print(f"\nSaved: {summary_path}")
 
 
 if __name__ == "__main__":

@@ -33,18 +33,25 @@ parser.add_argument("--models", nargs="+", default=["fastgrnn", "gru", "lstm"])
 parser.add_argument("--seeds", nargs="+", type=int, default=[0, 1, 2, 3, 4])
 parser.add_argument("--epochs", type=int, default=120)
 parser.add_argument("--lr", type=float, default=1e-3)
+parser.add_argument("--data", default="data/processed/hapt_windows.npz")
+parser.add_argument("--tag", default=None)
+parser.add_argument("--val_holdout", type=int, default=4)
 args = parser.parse_args()
 
-NUM_CLASSES = 6
-CLASS_NAMES = ["WALKING", "UPSTAIRS", "DOWNSTAIRS", "SITTING", "STANDING", "LAYING"]
+TAG = args.tag or Path(args.data).stem.replace("_windows", "")
+PREFIX = "" if TAG == "hapt" else f"{TAG}_"   # keep existing hapt files unprefixed
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-print(f"Device: {DEVICE}")
+print(f"Dataset tag: {TAG} | Device: {DEVICE}")
 
-data = np.load("data/processed/hapt_windows.npz", allow_pickle=True)
+data = np.load(args.data, allow_pickle=True)
 X_tr, y_tr, s_tr = data["X_train"], data["y_train"], data["subjects_train"]
 X_te, y_te = data["X_test"], data["y_test"]
 y_tr, y_te = y_tr - 1, y_te - 1
-uniq = sorted(set(s_tr.tolist())); val_subjects = set(uniq[-4:])
+NUM_CLASSES = int(max(y_tr.max(), y_te.max())) + 1
+CLASS_NAMES = ([str(s).split(" ", 1)[-1] for s in data["activity_labels"]]
+               if "activity_labels" in data else [f"class{i}" for i in range(NUM_CLASSES)])
+print(f"NUM_CLASSES={NUM_CLASSES}")
+uniq = sorted(set(s_tr.tolist())); val_subjects = set(uniq[-args.val_holdout:])
 val_mask = np.array([s in val_subjects for s in s_tr])
 X_trn, y_trn = X_tr[~val_mask], y_tr[~val_mask]
 X_val, y_val = X_tr[val_mask], y_tr[val_mask]
@@ -90,7 +97,7 @@ def evaluate(model, loader):
 
 def train_one(kind, h, seed):
     Path("experiments").mkdir(exist_ok=True)
-    out = f"experiments/pareto_{kind}_h{h}_s{seed}_e{args.epochs}.json"
+    out = f"experiments/pareto_{PREFIX}{kind}_h{h}_s{seed}_e{args.epochs}.json"
     if Path(out).exists():
         with open(out) as f:
             r = json.load(f)
@@ -135,7 +142,7 @@ def main():
                             "mean_f1": float(f1s.mean()), "std_f1": float(f1s.std()),
                             "per_seed_f1": f1s.tolist()}
             print(f"  --> {key}: {npar} par, F1 {f1s.mean():.4f} +/- {f1s.std():.4f}\n")
-    with open("experiments/pareto_summary.json", "w") as f:
+    with open(f"experiments/pareto_{PREFIX}summary.json", "w") as f:
         json.dump(summary, f, indent=2)
     print("\n=== PARETO SWEEP SUMMARY (dense, accuracy vs params) ===")
     print(f"{'model':10s} {'H':>3s} {'params':>7s} {'mean F1':>9s} {'std':>7s}")
