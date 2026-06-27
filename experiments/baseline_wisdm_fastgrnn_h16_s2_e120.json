@@ -1,0 +1,20 @@
+{
+  "model": "fastgrnn",
+  "hidden": 16,
+  "seed": 2,
+  "epochs": 120,
+  "lr": 0.001,
+  "n_params": 440,
+  "best_epoch": 11,
+  "best_val_f1": 0.6694075077540272,
+  "test_accuracy": 0.7533458051518204,
+  "test_macro_f1": 0.687148711183356,
+  "per_class_f1": {
+    "Walking": 0.8117194102732651,
+    "Jogging": 0.8945738212687852,
+    "Upstairs": 0.4142857142857143,
+    "Downstairs": 0.2376237623762376,
+    "Sitting": 0.909933774834437,
+    "Standing": 0.8547557840616966
+  }
+}

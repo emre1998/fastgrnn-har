@@ -1,0 +1,26 @@
+{
+  "model": "fastgrnn",
+  "hidden": 16,
+  "seed": 3,
+  "epochs": 120,
+  "lr": 0.001,
+  "n_params": 542,
+  "best_epoch": 108,
+  "best_val_f1": 0.4690811668538255,
+  "test_accuracy": 0.42244963223536935,
+  "test_macro_f1": 0.36045405319571827,
+  "per_class_f1": {
+    "lying": 0.3877327491785323,
+    "sitting": 0.21951219512195122,
+    "standing": 0.6131805157593123,
+    "walking": 0.46567164179104475,
+    "running": 0.15873015873015872,
+    "cycling": 0.7616645649432535,
+    "Nordic_walking": 0.19775280898876405,
+    "ascending_stairs": 0.4557522123893805,
+    "descending_stairs": 0.3002028397565923,
+    "vacuum_cleaning": 0.40540540540540543,
+    "ironing": 0.35984354628422427,
+    "rope_jumping": 0.0
+  }
+}
