@@ -1,0 +1,9 @@
+{
+  "model": "gru",
+  "hidden": 5,
+  "seed": 0,
+  "n_params": 186,
+  "best_epoch": 113,
+  "test_accuracy": 0.8414239482200647,
+  "test_macro_f1": 0.8320154986909337
+}

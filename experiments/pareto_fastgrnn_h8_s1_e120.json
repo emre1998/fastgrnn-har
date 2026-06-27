@@ -1,0 +1,9 @@
+{
+  "model": "fastgrnn",
+  "hidden": 8,
+  "seed": 1,
+  "n_params": 160,
+  "best_epoch": 72,
+  "test_accuracy": 0.832597822889085,
+  "test_macro_f1": 0.8132029192979013
+}
