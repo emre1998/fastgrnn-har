@@ -1,0 +1,19 @@
+{
+  "model": "lstm",
+  "hidden": 6,
+  "seed": 4,
+  "epochs": 120,
+  "n_params": 306,
+  "best_epoch": 113,
+  "best_val_f1": 0.908949057736757,
+  "test_accuracy": 0.8667255075022066,
+  "test_macro_f1": 0.8634073923196558,
+  "per_class_f1": {
+    "WALKING": 0.7621483375959079,
+    "UPSTAIRS": 0.7838827838827839,
+    "DOWNSTAIRS": 0.9479638009049773,
+    "SITTING": 0.8593389700230591,
+    "STANDING": 0.8411949685534591,
+    "LAYING": 0.9859154929577465
+  }
+}

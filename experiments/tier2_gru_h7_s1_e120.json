@@ -1,0 +1,19 @@
+{
+  "model": "gru",
+  "hidden": 7,
+  "seed": 1,
+  "epochs": 120,
+  "n_params": 300,
+  "best_epoch": 116,
+  "best_val_f1": 0.8890683463185091,
+  "test_accuracy": 0.8858487790526626,
+  "test_macro_f1": 0.8847214602434921,
+  "per_class_f1": {
+    "WALKING": 0.8196428571428571,
+    "UPSTAIRS": 0.8357870894677236,
+    "DOWNSTAIRS": 0.9579067121729238,
+    "SITTING": 0.851373182552504,
+    "STANDING": 0.858433734939759,
+    "LAYING": 0.9851851851851852
+  }
+}
