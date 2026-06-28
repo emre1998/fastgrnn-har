@@ -1,0 +1,26 @@
+{
+  "dataset": "pamap2",
+  "seed": 3,
+  "num_classes": 12,
+  "head_params": 204,
+  "fastgrnn": {
+    "sparse_fp32_f1": 0.45750923895058176,
+    "q15_f1": 0.4577061769811606,
+    "cell_nonzero": 181,
+    "total_nonzero": 385
+  },
+  "gru": {
+    "hidden": 7,
+    "fp32_f1": 0.4359967494442129,
+    "q15_f1": 0.4359967494442129,
+    "cell_nonzero": 252,
+    "total_nonzero": 348
+  },
+  "lstm": {
+    "hidden": 6,
+    "fp32_f1": 0.26641632436375634,
+    "q15_f1": 0.2663705115740877,
+    "cell_nonzero": 264,
+    "total_nonzero": 348
+  }
+}

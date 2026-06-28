@@ -1,0 +1,26 @@
+{
+  "dataset": "wisdm",
+  "seed": 3,
+  "num_classes": 6,
+  "head_params": 102,
+  "fastgrnn": {
+    "sparse_fp32_f1": 0.7878467174114165,
+    "q15_f1": 0.7879976764737551,
+    "cell_nonzero": 181,
+    "total_nonzero": 283
+  },
+  "gru": {
+    "hidden": 6,
+    "fp32_f1": 0.7033355511776632,
+    "q15_f1": 0.7031487831656168,
+    "cell_nonzero": 198,
+    "total_nonzero": 240
+  },
+  "lstm": {
+    "hidden": 5,
+    "fp32_f1": 0.6397818789518257,
+    "q15_f1": 0.6396874111583762,
+    "cell_nonzero": 200,
+    "total_nonzero": 236
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "dataset": "hapt",
+  "seed": 4,
+  "num_classes": 6,
+  "head_params": 102,
+  "fastgrnn": {
+    "sparse_fp32_f1": 0.9181098508138401,
+    "q15_f1": 0.9184632251758308,
+    "cell_nonzero": 181,
+    "total_nonzero": 283
+  },
+  "gru": {
+    "hidden": 6,
+    "fp32_f1": 0.8821845137849879,
+    "q15_f1": 0.8818049448258302,
+    "cell_nonzero": 198,
+    "total_nonzero": 240
+  },
+  "lstm": {
+    "hidden": 5,
+    "fp32_f1": 0.7798655552422341,
+    "q15_f1": 0.7798655552422341,
+    "cell_nonzero": 200,
+    "total_nonzero": 236
+  }
+}
