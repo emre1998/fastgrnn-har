@@ -1,0 +1,21 @@
+{
+  "dataset": "pamap2",
+  "seed": 3,
+  "stage": "lowrank",
+  "n_params": 532,
+  "test_macro_f1": 0.33152730256331714,
+  "per_class_f1": {
+    "lying": 0.5854483925549916,
+    "sitting": 0.22140221402214022,
+    "standing": 0.5924050632911393,
+    "walking": 0.026845637583892617,
+    "running": 0.20634920634920634,
+    "cycling": 0.8975468975468975,
+    "Nordic_walking": 0.13432835820895522,
+    "ascending_stairs": 0.34989200863930886,
+    "descending_stairs": 0.0,
+    "vacuum_cleaning": 0.43317972350230416,
+    "ironing": 0.4833110814419226,
+    "rope_jumping": 0.047619047619047616
+  }
+}

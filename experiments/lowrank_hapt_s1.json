@@ -1,0 +1,15 @@
+{
+  "dataset": "hapt",
+  "seed": 1,
+  "stage": "lowrank",
+  "n_params": 430,
+  "test_macro_f1": 0.6659116058042086,
+  "per_class_f1": {
+    "WALKING": 0.29590766002098634,
+    "WALKING_UPSTAIRS": 0.47058823529411764,
+    "WALKING_DOWNSTAIRS": 0.6063492063492063,
+    "SITTING": 0.8225563909774436,
+    "STANDING": 0.8420208500400962,
+    "LAYING": 0.958047292143402
+  }
+}

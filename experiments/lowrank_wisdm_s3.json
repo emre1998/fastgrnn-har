@@ -1,0 +1,15 @@
+{
+  "dataset": "wisdm",
+  "seed": 3,
+  "stage": "lowrank",
+  "n_params": 430,
+  "test_macro_f1": 0.790168416552041,
+  "per_class_f1": {
+    "Walking": 0.8830923353180229,
+    "Jogging": 0.8838108231014097,
+    "Upstairs": 0.4814495254529767,
+    "Downstairs": 0.7000642260757868,
+    "Sitting": 0.8849315068493151,
+    "Standing": 0.9076620825147348
+  }
+}
