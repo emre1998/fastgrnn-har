@@ -55,3 +55,9 @@ Release/
 # CCS / Theia debug session noise (workspace lock files, output traces)
 true
 contract.md
+
+# firmware build artifacts
+arduino/*/host_main.cpp
+arduino/*/host_test.exe
+arduino/*/test_data.h
+deploy_*_hapt_s*.pt
