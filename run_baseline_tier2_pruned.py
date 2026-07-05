@@ -24,6 +24,7 @@ import torch.nn as nn
 from torch.utils.data import DataLoader, TensorDataset
 from sklearn.metrics import f1_score
 from pathlib import Path
+from quantize import q15_round
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--epochs", type=int, default=120)
@@ -31,22 +32,28 @@ parser.add_argument("--ramp_epochs", type=int, default=60)
 parser.add_argument("--lr", type=float, default=1e-3)
 parser.add_argument("--hidden", type=int, default=16)
 parser.add_argument("--keep_cell", type=int, default=181,
-                    help="Target nonzero cell params (FastGRNN deployed = 181)")
+                    help="Target nonzero cell params (FastGRNN deployed cell = 181, dataset-independent)")
 parser.add_argument("--seeds", nargs="+", type=int, default=[0, 1, 2, 3, 4])
 parser.add_argument("--models", nargs="+", default=["gru", "lstm"])
+parser.add_argument("--data", default="data/processed/hapt_windows.npz")
+parser.add_argument("--tag", default=None)
+parser.add_argument("--val_holdout", type=int, default=4)
 args = parser.parse_args()
 
-NUM_CLASSES = 6
-CLASS_NAMES = ["WALKING", "UPSTAIRS", "DOWNSTAIRS", "SITTING", "STANDING", "LAYING"]
+TAG = args.tag or Path(args.data).stem.replace("_windows", "")
 CELL_PARAMS = ["weight_ih_l0", "weight_hh_l0", "bias_ih_l0", "bias_hh_l0"]
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-print(f"Device: {DEVICE}")
+print(f"Dataset tag: {TAG} | Device: {DEVICE}")
 
-data = np.load("data/processed/hapt_windows.npz", allow_pickle=True)
+data = np.load(args.data, allow_pickle=True)
 X_tr, y_tr, s_tr = data["X_train"], data["y_train"], data["subjects_train"]
 X_te, y_te = data["X_test"], data["y_test"]
 y_tr, y_te = y_tr - 1, y_te - 1
-uniq = sorted(set(s_tr.tolist())); val_subjects = set(uniq[-4:])
+NUM_CLASSES = int(max(y_tr.max(), y_te.max())) + 1
+CLASS_NAMES = ([str(s).split(" ", 1)[-1] for s in data["activity_labels"]]
+               if "activity_labels" in data else [f"class{i}" for i in range(NUM_CLASSES)])
+print(f"NUM_CLASSES={NUM_CLASSES}")
+uniq = sorted(set(s_tr.tolist())); val_subjects = set(uniq[-args.val_holdout:])
 val_mask = np.array([s in val_subjects for s in s_tr])
 X_trn, y_trn = X_tr[~val_mask], y_tr[~val_mask]
 X_val, y_val = X_tr[val_mask], y_tr[val_mask]
@@ -129,7 +136,7 @@ def keep_at(epoch, total, target_keep, ramp):
 
 def train_one(kind, seed):
     Path("experiments").mkdir(exist_ok=True)
-    out = f"experiments/tier2pruned_{kind}_h{args.hidden}_s{seed}_e{args.epochs}.json"
+    out = f"experiments/tier2pruned_{TAG}_{kind}_h{args.hidden}_s{seed}_e{args.epochs}.json"
     if Path(out).exists():
         with open(out) as f:
             r = json.load(f)
@@ -157,17 +164,30 @@ def train_one(kind, seed):
             best_state = copy.deepcopy(model.state_dict())
             best_nz = model.nonzero_total()
     model.load_state_dict(best_state)
+    for n in model.masks:                              # restore masks from loaded state
+        model.masks[n] = (getattr(model.rnn, n).abs() > 0).float().to(DEVICE)
     te_acc, te_f1, yt, yp = evaluate(model, test_loader)
     per_class = f1_score(yt, yp, average=None).tolist()
     cell_nz, head_nz, tot_nz = best_nz
+
+    # weight-Q15: per-tensor int16 rounding (mask applied first), architecture-agnostic
+    with torch.no_grad():
+        for n in CELL_PARAMS:
+            p = getattr(model.rnn, n); p.mul_(model.masks[n])
+            p.data.copy_(q15_round(p.data)[0])
+        for p in model.classifier.parameters():
+            p.data.copy_(q15_round(p.data)[0])
+    _, q15_f1, _, _ = evaluate(model, test_loader)
+
     r = {"model": kind + "_pruned", "hidden": args.hidden, "seed": seed,
          "cell_nonzero": cell_nz, "head": head_nz, "total_nonzero": tot_nz,
          "best_epoch": best_ep, "best_val_f1": float(best_f1),
          "test_accuracy": float(te_acc), "test_macro_f1": float(te_f1),
+         "q15_macro_f1": float(q15_f1),
          "per_class_f1": {n: float(s) for n, s in zip(CLASS_NAMES, per_class)}}
     with open(out, "w") as f:
         json.dump(r, f, indent=2)
-    print(f"  [{kind:5s} pruned seed {seed}] F1={te_f1:.4f} acc={te_acc:.4f} "
+    print(f"  [{kind:5s} pruned seed {seed}] F1={te_f1:.4f} Q15={q15_f1:.4f} acc={te_acc:.4f} "
           f"nz={tot_nz} (cell {cell_nz}+head {head_nz}) best_ep={best_ep} -> {out}")
     return r
 
@@ -178,18 +198,21 @@ def main():
     summary = {}
     for kind in args.models:
         print(f"=== {kind} pruned (H={args.hidden} -> {args.keep_cell} cell nonzero) ===")
-        f1s, nz = [], None
+        f1s, q15s, nz = [], [], None
         for seed in args.seeds:
-            r = train_one(kind, seed); f1s.append(r["test_macro_f1"]); nz = r["total_nonzero"]
-        f1s = np.array(f1s)
+            r = train_one(kind, seed); f1s.append(r["test_macro_f1"])
+            q15s.append(r.get("q15_macro_f1", r["test_macro_f1"])); nz = r["total_nonzero"]
+        f1s, q15s = np.array(f1s), np.array(q15s)
         summary[kind + "_pruned"] = {"total_nonzero": nz,
             "mean_f1": float(f1s.mean()), "std_f1": float(f1s.std()),
-            "per_seed_f1": f1s.tolist()}
-        print(f"  --> {kind} pruned: F1 {f1s.mean():.4f} +/- {f1s.std():.4f} "
-              f"({nz} nonzero)\n")
-    with open("experiments/tier2pruned_summary.json", "w") as f:
+            "q15_mean_f1": float(q15s.mean()), "q15_std_f1": float(q15s.std()),
+            "per_seed_f1": f1s.tolist(), "q15_per_seed_f1": q15s.tolist()}
+        print(f"  --> {kind} pruned: FP32 {f1s.mean():.4f}+/-{f1s.std():.4f} "
+              f"Q15 {q15s.mean():.4f}+/-{q15s.std():.4f} ({nz} nonzero)\n")
+    sp = f"experiments/tier2pruned_{TAG}_summary.json"
+    with open(sp, "w") as f:
         json.dump(summary, f, indent=2)
-    print("Saved: experiments/tier2pruned_summary.json")
+    print(f"Saved: {sp}")
 
 
 if __name__ == "__main__":
