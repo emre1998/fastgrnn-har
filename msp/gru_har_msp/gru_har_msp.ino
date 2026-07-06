@@ -40,9 +40,9 @@ void setup() {
   #endif
     return;   // loop() runs the tight benchmark
 #else
-    Serial.begin(115200);
+    Serial.begin(9600);   // MSP430 default UART speed (Energia)
     delay(500);
-    Serial.println(F("=== GRU HAR - latency (Arduino Uno) ==="));
+    Serial.println(F("=== GRU HAR - latency (MSP430G2553) ==="));
     Serial.print(F("H=")); Serial.print(HIDDEN_SIZE);
     Serial.print(F("  window=")); Serial.print(WINDOW_T);
     Serial.print(F("  classes=")); Serial.println(NUM_CLASSES);
