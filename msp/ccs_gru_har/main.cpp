@@ -106,8 +106,6 @@ int main(void) {
 
     float win_ms = (float)total_ms / N_TIMING_WINDOWS;
     float step_us = win_ms * 1000.0f / WINDOW_T;
-    float budget_us = (float)WINDOW_T * 20.0f * 1000.0f / WINDOW_T;  // 20 ms per step budget
-    (void)budget_us;
 
     sprint("Windows timed:   "); sprint_u(N_TIMING_WINDOWS);
     sprint(" ("); sprint_u(total_ms); sprint(" ms total)\n");
