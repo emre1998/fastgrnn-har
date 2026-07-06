@@ -46,6 +46,7 @@ Release/
 .project
 .metadata/
 *.launch
+.worktrees/
 
 # Misc
 *.tmp
