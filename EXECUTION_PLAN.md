@@ -14,17 +14,26 @@ Kararlar: **K1**=GRU/LSTM tam deployment+ölçüm · **K2**=pruned rota 3 datase
 
 ## FAZ A — Yazılım deneyleri (donanım gerekmez, Claude sürer)
 
-- [ ] **A1 (K2)** `run_baseline_tier2_pruned.py`'yi `--data`/`--tag`/`--val_holdout` parametrik yap + ağırlık-Q15 ekle.
-- [ ] **A2 (K2)** GRU/LSTM pruned-to-budget koş: HAPT + WISDM + PAMAP2, 5 tohum. → her baseline'a "ikinci rota", tabloda en iyisini al.
-- [ ] **A3** Sıkıştırma ablation tablosu (FastGRNN): dense → low-rank → +sparse → +Q15, 3 dataset. Eldeki sparse/low-rank verisini derle, eksikse hedefli koşu. → Failure Analysis bölümünü besler.
-- [ ] **A4 (K3)** SRAM çalışma-seti muhasebesi: her hücre için Flash (nonzero×2) + SRAM (gizli durum H×2 + girdi D×2 + scratch), streaming altında. 512B MSP430'a sığdığını analitik göster (~onlarca bayt; pencereyi saklamamak kritik).
-- [ ] **A4b** Eşit-beyin (H=16) footprint tablosu, ÖNCESİ→SONRASI (dense FP32 → deployed Q15+sıkıştırma): FastGRNN 1760B→566B, GRU 4440B→2220B, LSTM 5784B→2892B. → sıkıştırılabilirlik farkını ölçülü göster (reversal'ın görsel ispatı). İsteğe bağlı 2. eksen: eşit-beyin footprint → eşit-bayt (FastGRNN H16 korur / GRU H6'ya düşer).
+- [x] **A1 (K2)** `run_baseline_tier2_pruned.py` parametrik + ağırlık-Q15. ✅ commit 9f15844
+- [x] **A2 (K2)** GRU/LSTM pruned-to-budget, 3 dataset × 5 tohum, 200ep. ✅ commit 6da41e5. analyze_best_route.py + best_route_summary.json. SONUÇ: en iyi rota tablosu → HAPT gru0.902(pruned)/FastG0.869 kazanan GRU · WISDM FastG0.800/gru0.767(pruned) · PAMAP2 FastG0.444/gru0.354. Saldırı#2 kapandı (baseline'a 2 rota, FastG yine 2/3 kazanır). Nüans: pruning de H16 kapasitesini korur → GRU-pruned WISDM'de sıçradı (0.683→0.767), FastG avantajı +0.033'e daraldı. Rafine mekanizma: kapasite-koruyan sıkıştırma > shrink; FastGRNN yapısal low-rank+sparse en etkili.
+- [x] **A3** Sıkıştırma ablation (dense→low-rank→+sparse→+Q15), 3 dataset. ✅ commit c92118e (run_lowrank_stage.py + analyze_ablation.py). BULGU: instabilite LOW-RANK adımında doğuyor (HAPT std 0.018→0.098), IHT'de büyümüyor (worst 0.666→0.708 toparlıyor) — dünkü "IHT amplifies" alt-iddiası DÜZELDİ. HAPT'a özgü low-rank×dataset etkileşimi; WISDM'de low-rank doğruluğu ARTIRIP varyansı DÜŞÜRÜYOR (0.748→0.797, std 0.033→0.018). Sparse/Q15 near-neutral, Q15 kayıpsız. Sıkıştırma çoğu zaman regularizing.
+- [x] **A4 (K3)** SRAM+Flash iki-parçalı muhasebe. ✅ commit 1db1c65 (analyze_footprint.py). SRAM streaming: FastGRNN ~114-126B, GRU ~146-158B, LSTM ~210-222B — hepsi 512B'ye sığar. Pencere-sakla 768B (MSP OVER) → streaming şart. Flash 472-770B << 16KB. (SRAM analitik, Faz B .map ile teyit edilecek.)
+- [x] **A4b** Eşit-beyin (H=16) footprint dense→sıkıştırılmış: FastGRNN 1760→566B (3.1×), GRU 4440→2220B, LSTM 5784→2892B. ✅ Eşit beyinde FastGRNN 3.9-5.1× küçük → bütçede GRU/LSTM neden H küçültür.
+
+**FAZ A TAMAM (A1-A4b) — 1 Tem 2026.** Sıradaki: Faz B (donanım, kullanıcı cihazı gerekir).
 
 ## FAZ B — Donanım deployment + ölçüm (senin Arduino+MSP430+INA226 kurulumun gerekir)
 
-- [ ] **B1 (K1)** Claude: GRU H? + LSTM H? (dataset başına deploy config) için sabit-nokta **bit-tam C çıkarımı** yaz — Arduino Uno + MSP430. FastGRNN zaten deploy edilmiş, onu şablon al.
-- [ ] **B2 (K1)** Sen: flash'la + ölç → her hücre için **latency/çıkarım** + **enerji/çıkarım (INA226)** + bit-tam doğrulama. (FastGRNN mevcut; GRU/LSTM yeni.)
-- [ ] **B3 (K1+K3)** Per-hücre deployment tablosu derle: doğruluk · Flash · SRAM · latency · enerji · **measured/estimated etiketi**. "Gerçek-zamanlı" iddiasını latency ile kanıtla (çıkarım << pencere süresi).
+- [x] **B1 (K1)** GRU H6 + LSTM H5 bit-tam C çıkarımı yazıldı + host'ta g++ ile DOĞRULANDI (5/5 %100, commit f03436b). Arduino .ino + MSP430 Energia harness (latency+enerji, commit 727a6f3). GRU 480B/F1 0.915, LSTM 472B/F1 0.818. build_deploy_firmware.py + verify_firmware.py.
+- [x] **B2 (K1)** TAMAM (8-9 Tem 2026, B2_RESULTS.md). CCS (Energia değil) kullanıldı — msp/ccs_gru_har + msp/ccs_lstm_har + msp/ccs_uart_test yazıldı. Debug/Flash staleness + proje karışıklığı debug edildi (banner-metni "fingerprint" yöntemiyle çözüldü — TEST_MODE 1'in kendi UART çıktısı "GRU HAR"/"LSTM HAR" + H değeri kesin kanıt verdi). Enerji tamamen baştan ölçüldü (temiz prosedür: Save→Clean→Build→Debug, hep aynı yöntem).
+  LATENCY (LUT var): FastGRNN 13.9ms(69.5%) · GRU 12.116ms(60.6%) · LSTM 12.370ms(61.9%) — üçü REAL-TIME OK.
+  LATENCY (LUT yok): GRU 19.273ms(96.4%, sınırda OK) · LSTM 22.097ms(110.5%, FAIL) · FastGRNN ~421ms(FAIL). BULGU: LUT hücre-bağımsız ön-koşul, LSTM'de kesin gerekli.
+  ENERJİ (INA226, steady-state): GRU BENCH1 17.65mW/BENCH2 17.70mW(LUT)/17.70mW(no-LUT) · LSTM BENCH1 17.70mW/BENCH2 17.70mW(LUT)/17.70mW(no-LUT). BULGU: LUT ortalama güce etki etmez (sadece latency), üç hücrede de doğrulandı; GRU≈LSTM≈FastGRNN(17.72-17.86mW) güç profili neredeyse özdeş.
+  BELLEK (CCS build, adil-kapsam minimal harness): GRU Flash 5936B/RAM 310B · LSTM Flash 6908B/RAM 324B (LSTM +972B Flash [4 kapı], +14B RAM [ekstra c_state], analitik tahminle tutarlı). FastGRNN'in orijinal tam-özellikli build'i (8778B/348B, MPU6050+I2C dahil) FARKLI KAPSAMLI, doğrudan kıyaslanmadı — makalede ANALİTİK ağırlık-footprint (566/480/472B, analyze_footprint.py) adil kıyas olarak kullanılacak.
+  Commit'ler: 1b5e6e7, 13d8769, 231ebc8, 7fe3bc7, 2c9ce31, 15f9ad6, 3d239b8.
+- [ ] **B3 (K1+K3)** Per-hücre deployment tablosu derle: doğruluk · Flash · SRAM · latency · enerji · **measured/estimated etiketi**. "Gerçek-zamanlı" iddiasını latency ile kanıtla (çıkarım << pencere süresi). B2_RESULTS.md'deki ölçülü verileri + analyze_footprint.py'deki analitik SRAM'i birleştir.
+
+**FAZ B DONANIM ÖLÇÜMÜ TAMAM (B1+B2) — 9 Tem 2026.** Sıradaki: B3 (tablo derleme, koşu/ölçüm gerekmez) → Faz C (yazım).
 
 ## FAZ C — Makale yazımı (kanıt derlendikten sonra)
 
