@@ -13,15 +13,18 @@
 | LSTM | Arduino| 1 | ? | ? | ? | ? |
 
 ## Enerji (TEST_MODE 3, INA226, steady-state)
+*NOT: Önceki tur bir Debug/Flash karışıklığı yüzünden şüpheli bulundu ve TAMAMEN SIFIRLANDI (6 Tem 2026).
+Yeni prosedür: her #define değişikliğinde Save → Project Clean → Build → Debug ile çalıştır (hep aynı yöntem, tutarlılık için).
+Sıra: önce LSTM (baştan), sonra GRU (baştan).*
 | Hücre | Platform | BENCH | LUT | I (mA) | V (mV) | P (mW) |
 |-------|----------|-------|-----|--------|--------|--------|
-| (idle platform-bağımsız — MSP430 idle <0.025 mA / <0.09 mW) |
+| (idle platform-bağımsız — MSP430 idle <0.025 mA / <0.09 mW, referans FastGRNN'den) |
+| LSTM | MSP430 | 1 (50Hz) | 1 | 5.058 | 3479.2 | 17.70 |
+| LSTM | MSP430 | 2 (cont) | 1 | 5.077 | 3478.9 | 17.70 |
+| LSTM | MSP430 | 2 (cont) | 0 | 5.078 | 3478.9 | 17.70 |
 | GRU  | MSP430 | 1 (50Hz) | 1 | ? | ? | ? |
 | GRU  | MSP430 | 2 (cont) | 1 | ? | ? | ? |
 | GRU  | MSP430 | 2 (cont) | 0 | ? | ? | ? |
-| LSTM | MSP430 | 1 (50Hz) | 1 | ? | ? | ? |
-| LSTM | MSP430 | 2 (cont) | 1 | ? | ? | ? |
-| LSTM | MSP430 | 2 (cont) | 0 | ? | ? | ? |
 
 ## Bellek (derleyici çıktısı)
 | Hücre | Platform | Flash (B) | SRAM (B) |
