@@ -29,5 +29,5 @@ Sıra: önce LSTM (baştan), sonra GRU (baştan).*
 ## Bellek (derleyici çıktısı)
 | Hücre | Platform | Flash (B) | SRAM (B) |
 |-------|----------|-----------|----------|
-| GRU  | MSP430 | ? | ? |
-| LSTM | MSP430 | ? | ? |
+| GRU  | MSP430 | 5936 | 310 |
+| LSTM | MSP430 | 6908 | 324 |
