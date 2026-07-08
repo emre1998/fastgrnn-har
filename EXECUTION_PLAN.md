@@ -33,7 +33,18 @@ Kararlar: **K1**=GRU/LSTM tam deployment+ölçüm · **K2**=pruned rota 3 datase
   Commit'ler: 1b5e6e7, 13d8769, 231ebc8, 7fe3bc7, 2c9ce31, 15f9ad6, 3d239b8.
 - [ ] **B3 (K1+K3)** Per-hücre deployment tablosu derle: doğruluk · Flash · SRAM · latency · enerji · **measured/estimated etiketi**. "Gerçek-zamanlı" iddiasını latency ile kanıtla (çıkarım << pencere süresi). B2_RESULTS.md'deki ölçülü verileri + analyze_footprint.py'deki analitik SRAM'i birleştir.
 
-**FAZ B DONANIM ÖLÇÜMÜ TAMAM (B1+B2) — 9 Tem 2026.** Sıradaki: B3 (tablo derleme, koşu/ölçüm gerekmez) → Faz C (yazım).
+**FAZ B DONANIM ÖLÇÜMÜ TAMAM (B1+B2) — 9 Tem 2026.**
+
+### B2 RİGOR DÜZELTMESİ (9 Tem 2026) — kullanıcının kritik yakalaması
+Kullanıcı sordu: "bu bellek verileri test senaryosu için, gerçek kullanım için değil, sorun olur mu?" HAKLI ÇIKTI. İlk ölçülen sayılar (TEST_MODE=1 harness: UART banner+sprint_*+10x tekrar döngüsü) gerçek deployment'ı ŞİŞİRİYORDU. Çözüm: msp/ccs_{gru,lstm,fastgrnn}_production/ — sıfır UART/debug/tekrar, sadece init+gerçek 50Hz streaming döngü+LED aksiyonu (commit 05e3257). Üçü de cl430 ile derleme-doğrulandı (exit 0).
+NİHAİ PRODUCTION BELLEK (asıl deployment iddiası, commit 64ac170):
+  FastGRNN: Flash 5544B, RAM 348B (test-harness'e göre 10214→5544, -%46 — en büyük düşüş, orijinal harness'i MPU6050+I2C+live-mode içeriyordu)
+  GRU:      Flash 5392B, RAM 308B (6546→5392, -%18)
+  LSTM:     Flash 5742B, RAM 324B (6908→5742, -%17)
+Sıralama: GRU < FastGRNN < LSTM, hepsi 16KB Flash/512B SRAM bütçesinin rahat altında. Bu tablo makalenin YETKİLİ Flash/RAM iddiası olacak (test-harness sayıları B2_RESULTS.md'de "referans" olarak ayrıca duruyor, şeffaflık için).
+B2 KESİN TAMAM — latency+LUT ablasyonu+enerji+GERÇEK production bellek, 3 hücre, MSP430.
+
+Sıradaki: B3 (tablo derleme, koşu/ölçüm gerekmez) → Faz C (yazım).
 
 ## FAZ C — Makale yazımı (kanıt derlendikten sonra)
 
