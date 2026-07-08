@@ -22,9 +22,9 @@ Sıra: önce LSTM (baştan), sonra GRU (baştan).*
 | LSTM | MSP430 | 1 (50Hz) | 1 | 5.058 | 3479.2 | 17.70 |
 | LSTM | MSP430 | 2 (cont) | 1 | 5.077 | 3478.9 | 17.70 |
 | LSTM | MSP430 | 2 (cont) | 0 | 5.078 | 3478.9 | 17.70 |
-| GRU  | MSP430 | 1 (50Hz) | 1 | ? | ? | ? |
-| GRU  | MSP430 | 2 (cont) | 1 | ? | ? | ? |
-| GRU  | MSP430 | 2 (cont) | 0 | ? | ? | ? |
+| GRU  | MSP430 | 1 (50Hz) | 1 | 5.066 | 3478.9 | 17.65 |
+| GRU  | MSP430 | 2 (cont) | 1 | 5.054 | 3478.9 | 17.70 |
+| GRU  | MSP430 | 2 (cont) | 0 | 5.054 | 3478.8 | 17.70 |
 
 ## Bellek (derleyici çıktısı)
 | Hücre | Platform | Flash (B) | SRAM (B) |
