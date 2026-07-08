@@ -26,8 +26,12 @@ Sıra: önce LSTM (baştan), sonra GRU (baştan).*
 | GRU  | MSP430 | 2 (cont) | 1 | 5.054 | 3478.9 | 17.70 |
 | GRU  | MSP430 | 2 (cont) | 0 | 5.054 | 3478.8 | 17.70 |
 
-## Bellek (derleyici çıktısı)
+## Bellek (derleyici çıktısı, CCS Debug Output)
+*FİNAL, tutarlı ölçüm: üçü de AYNI ayarda — TEST_MODE=1, BENCH_MODE=1, USE_LUT=1 (9 Tem 2026).
+Not: FastGRNN'in kendi test harness'i (embedded test data + per-class rapor) GRU/LSTM'in minimal
+latency-only harness'inden biraz daha zengin olabilir — küçük bir kapsam notu, ana kıyası değiştirmez.*
 | Hücre | Platform | Flash (B) | SRAM (B) |
 |-------|----------|-----------|----------|
-| GRU  | MSP430 | 5936 | 310 |
+| FastGRNN | MSP430 | 10214 | 348 |
+| GRU  | MSP430 | 6546 | 308 |
 | LSTM | MSP430 | 6908 | 324 |
