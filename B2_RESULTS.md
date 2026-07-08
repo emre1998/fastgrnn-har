@@ -26,12 +26,20 @@ Sıra: önce LSTM (baştan), sonra GRU (baştan).*
 | GRU  | MSP430 | 2 (cont) | 1 | 5.054 | 3478.9 | 17.70 |
 | GRU  | MSP430 | 2 (cont) | 0 | 5.054 | 3478.8 | 17.70 |
 
-## Bellek (derleyici çıktısı, CCS Debug Output)
-*FİNAL, tutarlı ölçüm: üçü de AYNI ayarda — TEST_MODE=1, BENCH_MODE=1, USE_LUT=1 (9 Tem 2026).
-Not: FastGRNN'in kendi test harness'i (embedded test data + per-class rapor) GRU/LSTM'in minimal
-latency-only harness'inden biraz daha zengin olabilir — küçük bir kapsam notu, ana kıyası değiştirmez.*
+## Bellek — TEST HARNESS build (referans, test kapsamı dahil: UART banner + sprint_* + 10x timing tekrarı)
+*Tutarlı ölçüm: üçü de AYNI ayarda — TEST_MODE=1, BENCH_MODE=1, USE_LUT=1 (9 Tem 2026).
+Bu sayılar GERÇEK deployment'ı DEĞİL, test/ölçüm kodunu da içeren build'i yansıtır — aşağıdaki
+"PRODUCTION" tablosu asıl deployment footprint'i, makalede o kullanılacak.*
 | Hücre | Platform | Flash (B) | SRAM (B) |
 |-------|----------|-----------|----------|
 | FastGRNN | MSP430 | 10214 | 348 |
 | GRU  | MSP430 | 6546 | 308 |
 | LSTM | MSP430 | 6908 | 324 |
+
+## Bellek — PRODUCTION build (ASIL deployment footprint, UART/debug/tekrar YOK)
+*msp/ccs_{cell}_production/ — sadece init + gerçek streaming döngü + LED aksiyonu. 9 Tem 2026.*
+| Hücre | Platform | Flash (B) | SRAM (B) |
+|-------|----------|-----------|----------|
+| FastGRNN | MSP430 | 5544 | 348 |
+| GRU  | MSP430 | 5392 | 308 |
+| LSTM | MSP430 | 5742 | 324 |
