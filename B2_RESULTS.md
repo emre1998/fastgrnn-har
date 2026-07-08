@@ -43,3 +43,32 @@ Bu sayılar GERÇEK deployment'ı DEĞİL, test/ölçüm kodunu da içeren build
 | FastGRNN | MSP430 | 5544 | 348 |
 | GRU  | MSP430 | 5392 | 308 |
 | LSTM | MSP430 | 5742 | 324 |
+
+### Production testinin metodolojisi (neye göre ölçüldü)
+
+**Amaç:** Yukarıdaki "test harness" tablosu (satır 29-37), bir hakem tarafından haklı olarak
+itiraz edilebilecek şişirilmiş sayılardı — çünkü UART banner metni, `sprint_u`/`sprint_f3`
+debug yazdırma fonksiyonları ve latency ortalaması almak için 10× tekrarlanan zamanlama
+döngüsü, gerçek dağıtılmış bir cihazda **hiç bulunmaz.** "Production" build bu farkı kapatır.
+
+**Her hücre için ölçüm koşulları (üçü de birebir aynı):**
+- **Donanım:** MSP-EXP430G2ET (MSP430G2553), 16 MHz kalibre DCO clock
+- **Derleyici:** TI cl430 (ti-cgt-msp430_21.6.1.LTS), `-O3`, aynı proje ayarları (heap=0, stack=256B)
+- **Firmware kapsamı — DAHİL OLANLAR (gerçek dağıtımda da gerekli):**
+  - `clock_init()` + `timer_init()` (Timer_A, 1ms tik) — gerçek 50Hz örnekleme temposu için
+  - Hücrenin çıkarım motoru (`gru.cpp`/`lstm.cpp`/`fastgrnn.cpp`, değişmemiş, B1'de bit-tam doğrulanan aynı kod)
+  - Q15 ağırlıklar (`model_weights.h`) + sigmoid/tanh LUT tabloları (`lut.h`, 256-giriş, USE_LUT=1)
+  - Sonsuz döngü: pencere boyunca (WINDOW_T adım) 20ms'de bir örnek besle (`{cell}_step`) → pencere bitince sınıflandır (`{cell}_predict`) → sınıfa göre LED (P1.0) aç/kapat (gerçek bir "aşağı akış aksiyonu" temsili — gerçekte bir aktüatör/radyo paketi olurdu)
+- **Firmware kapsamı — HARİÇ TUTULANLAR (test-only, gerçek dağıtımda gereksiz):**
+  - UART başlatma (`uart_init`) ve TÜM `sprint_*`/`sputc` yazdırma kodu — hiç UART çıktısı yok
+  - Banner metinleri ("GRU HAR - MSP430G2553...") ve ilişkili string sabitleri
+  - Latency ölçümü için 10× tekrar döngüsü (N_TIMING_WINDOWS) — sadece bir kez, gerçek zamanlı çalışır
+  - Girdi: sabit sıfır (`{0,0,0}`) — çünkü Flash/RAM boyutu koddan gelir, veriden değil (bkz. latency bölümündeki aynı gerekçe); MPU6050/I2C sürücüsü bilerek yok (GRU/LSTM firmware'i sensöre bağlanmadı, sadece hesaplama+bellek izole edildi)
+- **Derleme doğrulaması:** Her üç `main.cpp` de host'ta `cl430 --compile_only` ile önce sözdizimi hatasız derlendi (exit 0), sonra CCS'te gerçek MSP430'a flash edilip Debug Output'taki linker özeti (`Flash/FRAM usage is X bytes. RAM usage is Y bytes.`) okundu.
+- **Proje izolasyonu:** Karışıklığı önlemek için her hücre **ayrı, yepyeni bir CCS projesinde** (eski FastGRNN/GRU/LSTM projelerinin yeniden kullanılması değil) derlendi — B1/B2'de birkaç kez yaşanan "main bulunamıyor" / stale-build hatalarından ders alınarak.
+
+**Sonuç yorumu:** Test-harness'e göre düşüş (FastGRNN -%46, GRU -%18, LSTM -%17) beklenen yöndeydi
+ve FastGRNN'in en büyük düşüşü, orijinal `ccs_fastgrnn_har` harness'inin (MPU6050+I2C+live-mode
+kodu içeren, GRU/LSTM'in minimal harness'inden daha zengin) diğerlerinden daha fazla test-only
+kod taşımasıyla açıklanıyor. Production sayıları (5392-5742B Flash) makaledeki **tek yetkili**
+deployment footprint iddiası olacak; test-harness sayıları sadece şeffaflık için referans olarak duruyor.
