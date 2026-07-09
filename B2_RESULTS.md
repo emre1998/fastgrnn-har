@@ -51,12 +51,27 @@ LUT ile GRU'da −%37 (43.7→27.5 mJ), LSTM'de −%44 (50.1→28.0 mJ), FastGRN
 Üç hücre aynı rejimde tutarlı (LUT tasarrufu %37–46 bandı). Hücreler arası: GRU LUT en verimli (27.5 mJ),
 LSTM no-LUT en kötü (50.1 mJ). Makale üç katmanlı: latency (ölçülen) → güç (ölçülen) → enerji (türetilen).
 
-⚠️ **Baseline uyarısı (kritik):** docs/energy_measurement.md'de FastGRNN için raporlanan −%96.7 tasarruf ve
-30.5× hızlanma, no-LUT'un **optimize-EDİLMEMİŞ TI-math kütüphanesi** baseline'ına (421 ms/step, 54 s/window)
-karşıdır — yukarıdaki derleyici-optimize rejimden FARKLI. Unified cross-hücre tablo (bu bölüm) hep
-derleyici-optimize no-LUT kullanır (adil kıyas). 96.7%/30.5× figürü ayrı bir anlatı olarak, açıkça
-"vs optimize-edilmemiş yazılım transandantalleri" etiketiyle kullanılır; GRU/LSTM'in −%37/−%44'ü ile
-DOĞRUDAN yan yana konmaz (yoksa farklı baseline yanıltıcı olur).
+### Derleyici -O duyarlılığı — no-LUT (ÖLÇÜLEN, 9 Tem akşam)
+Kontrollü test: AYNI kod, sadece CCS Optimization level değişti (off vs -O3=Interprocedure). TEST_MODE=1 latency, USE_LUT=0.
+Not: MSP430G2553'te `--use_hw_mpy = none` (donanım çarpıcı yok) — "çarpıcısız MCU" tezini teyit eder.
+
+| Hücre (no-LUT) | -O3 | -O off | Δ | real-time? |
+|----------------|-----|--------|---|------------|
+| GRU  | 19.273 ms | 20.202 ms | +%4.8 | her ikisinde de FAIL (%96→101) |
+| LSTM | 22.097 ms | 22.801 ms | +%3.2 | her ikisinde de FAIL (%110→114) |
+
+BULGU: **No-LUT latency'si derleyici -O seviyesine neredeyse DUYARSIZ (~%3-5).** Sebep: sigmoid/tanh maliyeti
+`expf()`/`tanhf()` çağrılarında, bunlar TI'nin ÖNCEDEN-DERLENMİŞ RTS math kütüphanesinde — proje -O'su bu
+kütüphanenin içini değiştirmez, yalnızca gru.cpp/lstm.cpp'deki MAC/matris kodunu (küçük pay) etkiler.
+
+⚠️ **54s figürünün durumu (DÜZELTİLDİ, kritik):** Bu ölçüm, docs/energy_measurement.md'deki FastGRNN 54s/421ms
+"optimize-edilmemiş" figürünün **-O off ile ELDE EDİLEMEYECEĞİNİ kanıtlıyor** (mevcut kodun -O off'u ~20-23ms,
+54s değil). Yani **54s ≠ "-O off"**; o, Week 8'den kalma FARKLI bir implementasyon (kaynak-içi Taylor/full-float,
+RTS+clamp öncesi). Dolayısıyla 54s bir tablo SÜTUNU YAPILAMAZ — sadece süperseded eski-kod dipnotu olarak kalır.
+30.5×/−%96.7 figürü ana enerji tablosundan çıkarılır; -O-duyarsızlık bulgusu (yukarıda) onun yerine geçer.
+LUT'un değeri iki temiz eksende sunulur: (1) LUT vs no-LUT latency/enerji, ikisi de -O3 (yukarıdaki tablolar);
+(2) LUT, -O'dan BAĞIMSIZ olarak real-time'ı mümkün kılar (no-LUT her -O'da FAIL). Not: FastGRNN no-LUT ~26ms
+(-O'dan bağımsız, RTS-baskın) → −%46 enerji figürü sağlam kalır; yalnızca 54s/96.7% anlatısı emekliye ayrılır.
 
 ### ⚠️ Metodolojik sınır — busy-wait / aktif-rejim üst-sınırı (dürüstlük notu)
 Firmware BENCH1/BENCH2'de örnekler arasında **LPM (uyku) kullanmıyor, busy-wait yapıyor**
