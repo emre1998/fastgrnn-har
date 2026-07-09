@@ -26,6 +26,36 @@ Sıra: önce LSTM (baştan), sonra GRU (baştan).*
 | GRU  | MSP430 | 2 (cont) | 1 | 5.054 | 3478.9 | 17.70 |
 | GRU  | MSP430 | 2 (cont) | 0 | 5.054 | 3478.8 | 17.70 |
 
+## Enerji/çıkarım — TÜRETİLMİŞ (E = ölçülen güç × ölçülen latency)
+*Güç (INA226) doğrudan ÖLÇÜLDÜ; latency doğrudan ÖLÇÜLDÜ; enerji bu ikisinden TÜRETİLDİ (hesaplama, ölçüm değil).
+Bu ayrım hakem için kritik — tabloda "measured" ve "derived" net ayrılıyor. 9 Tem 2026 revizyonu.*
+
+Aktif güç platform-baskın ve tüm hücrelerde ~17.7 mW'de sabit (§Enerji). Bu YANLIŞLIKLA "enerji de eşit"
+gibi okunmamalı: güç sabit + latency farklı ⟹ **enerji/çıkarım latency'yi izler.** LUT gücü değiştirmez ama
+çıkarımı erken bitirdiği için **türetilen enerji/pencereyi düşürür.**
+
+| Hücre | LUT | Ölçülen P (mW) | Ölçülen t_step (ms) | Ölçülen t_window (ms) | Türetilen E/step (mJ) | Türetilen E/window (mJ) |
+|-------|-----|----------------|---------------------|-----------------------|-----------------------|--------------------------|
+| GRU  | 1 | 17.70 | 12.116 | 1550.9 | 0.214 | 27.5 |
+| GRU  | 0 | 17.70 | 19.273 | 2467.0 | 0.341 | 43.7 |
+| LSTM | 1 | 17.70 | 12.370 | 1583.4 | 0.219 | 28.0 |
+| LSTM | 0 | 17.70 | 22.097 | 2828.4 | 0.391 | 50.1 |
+| FastGRNN | 1 | ~17.8 | 13.900 | 1778.0 | 0.247 | 31.6 |
+
+BULGU (doğru çerçeve): **Ölçülen güç LUT'tan bağımsız (~17.7 mW), ama türetilen enerji/pencere LUT ile GRU'da
+−%37 (43.7→27.5 mJ), LSTM'de −%44 (50.1→28.0 mJ) düşüyor.** Hücreler arası: GRU LUT en verimli (27.5 mJ),
+LSTM no-LUT en kötü (50.1 mJ). Makale üç katmanlı: latency (ölçülen) → güç (ölçülen) → enerji (türetilen).
+
+### ⚠️ Metodolojik sınır — busy-wait / aktif-rejim üst-sınırı (dürüstlük notu)
+Firmware BENCH1/BENCH2'de örnekler arasında **LPM (uyku) kullanmıyor, busy-wait yapıyor**
+(`while ((millis_ccs() - t0) < 20) {}`, kodda doğrulandı — yalnızca BENCH0/IDLE LPM3'e giriyor). Bu yüzden:
+- BENCH1 (50Hz) ile BENCH2 (continuous) **aynı gücü** verdi (bekleme sırasında CPU aktif kalıyor) — anomali değil, beklenen.
+- Raporlanan enerji değerleri firmware'in **aktif çalışma rejimini** yansıtır ⟹ **sistem enerjisinin ÜST SINIRI**, ulaşılabilir minimum değil.
+- Gerçek dağıtımda örnekler arası boşluk (20ms − t_compute) LPM3'e verilirse ortalama güç yaklaşık **aktif duty-cycle** (= latency %util: GRU LUT %60.6, LSTM no-LUT %110→uyuyamaz) oranında düşer. Yani LUT'un asıl enerji faydası LPM'li sistemde daha da büyür — LSTM no-LUT ise deadline'ı aştığı için hiç uyuyamaz.
+
+**Future Work (makaleye):** MSP430 LPM0/LPM3 modlarını örnekleme aralıklarına entegre ederek latency azalmasının
+*toplam sistem enerjisine* etkisini gerçekçi ölçmek. Mevcut değerler "aktif enerji üst sınırı" olarak yorumlanmalı.
+
 ## Bellek — TEST HARNESS build (referans, test kapsamı dahil: UART banner + sprint_* + 10x timing tekrarı)
 *Tutarlı ölçüm: üçü de AYNI ayarda — TEST_MODE=1, BENCH_MODE=1, USE_LUT=1 (9 Tem 2026).
 Bu sayılar GERÇEK deployment'ı DEĞİL, test/ölçüm kodunu da içeren build'i yansıtır — aşağıdaki
