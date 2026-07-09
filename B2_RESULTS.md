@@ -51,27 +51,49 @@ LUT ile GRU'da −%37 (43.7→27.5 mJ), LSTM'de −%44 (50.1→28.0 mJ), FastGRN
 Üç hücre aynı rejimde tutarlı (LUT tasarrufu %37–46 bandı). Hücreler arası: GRU LUT en verimli (27.5 mJ),
 LSTM no-LUT en kötü (50.1 mJ). Makale üç katmanlı: latency (ölçülen) → güç (ölçülen) → enerji (türetilen).
 
-### Derleyici -O duyarlılığı — no-LUT (ÖLÇÜLEN, 9 Tem akşam)
-Kontrollü test: AYNI kod, sadece CCS Optimization level değişti (off vs -O3=Interprocedure). TEST_MODE=1 latency, USE_LUT=0.
-Not: MSP430G2553'te `--use_hw_mpy = none` (donanım çarpıcı yok) — "çarpıcısız MCU" tezini teyit eder.
+### Derleyici -O duyarlılığı — TAM SWEEP (ÖLÇÜLEN, 9 Tem akşam)
+Kontrollü tam matris: AYNI kod, sadece CCS Optimization level değişti. 3 hücre × USE_LUT{0,1} × -O{off,0,1,2,3,4} = 36 ölçüm.
+GRU/LSTM: TEST_MODE=1 (Windows timed, zero input). FastGRNN: run_embedded_tests ("Inference time", gerçek test verisi, per-step=window/128).
+Not: MSP430G2553'te `--use_hw_mpy = none` (donanım çarpıcı yok) — "çarpıcısız MCU" tezini teyit eder. Enerji GEREKMEDİ (E=P×t, P sabit ~17.7mW; her -O için türetilir). Flash de sweep'lenmedi (ayrı soru, deploy Flash = production @ -O3).
 
-| Hücre (no-LUT) | -O3 | -O off | Δ | real-time? |
-|----------------|-----|--------|---|------------|
-| GRU  | 19.273 ms | 20.202 ms | +%4.8 | her ikisinde de FAIL (%96→101) |
-| LSTM | 22.097 ms | 22.801 ms | +%3.2 | her ikisinde de FAIL (%110→114) |
+**no-LUT (per-step ms):**
+| Hücre | off | 0 | 1 | 2 | 3 | 4 | Δ(off→plato) |
+|-------|-----|-----|-----|-----|-----|-----|-----|
+| GRU  | 20.202 | 19.663 | 19.510 | 19.273 | 19.273 | 19.273 | −%4.6 |
+| LSTM | 22.801 | 22.800 | 22.800 | 22.800 | 22.800 | 22.800 | ~%0 |
+| FastGRNN | 27.2 | 26.2 | 26.8 | 26.1 | 26.1 | 26.6 | ~%4 |
 
-BULGU: **No-LUT latency'si derleyici -O seviyesine neredeyse DUYARSIZ (~%3-5).** Sebep: sigmoid/tanh maliyeti
-`expf()`/`tanhf()` çağrılarında, bunlar TI'nin ÖNCEDEN-DERLENMİŞ RTS math kütüphanesinde — proje -O'su bu
-kütüphanenin içini değiştirmez, yalnızca gru.cpp/lstm.cpp'deki MAC/matris kodunu (küçük pay) etkiler.
+**LUT (per-step ms):**
+| Hücre | off | 0 | 1 | 2 | 3 | 4 | Δ(off→plato) |
+|-------|-----|-----|-----|-----|-----|-----|-----|
+| GRU  | 13.041 | 12.504 | 12.353 | 12.116 | 12.116 | 12.116 | −%7.1 |
+| LSTM | 13.091 | 12.609 | 12.442 | 12.371 | 12.371 | 12.371 | −%5.5 |
+| FastGRNN | 15.3 | 14.2 | 14.2 | 13.9 | 13.9 | 13.9 | −%8.9 |
 
-⚠️ **54s figürünün durumu (DÜZELTİLDİ, kritik):** Bu ölçüm, docs/energy_measurement.md'deki FastGRNN 54s/421ms
-"optimize-edilmemiş" figürünün **-O off ile ELDE EDİLEMEYECEĞİNİ kanıtlıyor** (mevcut kodun -O off'u ~20-23ms,
-54s değil). Yani **54s ≠ "-O off"**; o, Week 8'den kalma FARKLI bir implementasyon (kaynak-içi Taylor/full-float,
-RTS+clamp öncesi). Dolayısıyla 54s bir tablo SÜTUNU YAPILAMAZ — sadece süperseded eski-kod dipnotu olarak kalır.
-30.5×/−%96.7 figürü ana enerji tablosundan çıkarılır; -O-duyarsızlık bulgusu (yukarıda) onun yerine geçer.
-LUT'un değeri iki temiz eksende sunulur: (1) LUT vs no-LUT latency/enerji, ikisi de -O3 (yukarıdaki tablolar);
-(2) LUT, -O'dan BAĞIMSIZ olarak real-time'ı mümkün kılar (no-LUT her -O'da FAIL). Not: FastGRNN no-LUT ~26ms
-(-O'dan bağımsız, RTS-baskın) → −%46 enerji figürü sağlam kalır; yalnızca 54s/96.7% anlatısı emekliye ayrılır.
+BULGULAR:
+1. **no-LUT: -O neredeyse ETKİSİZ** (%0–4.6). Kök sebep: **MSP430G2553'te FPU YOK** → her float çarpma/toplama DA
+   (`expf`/`tanhf` gibi) önceden-derlenmiş **RTS soft-float** çağrısı. Proje -O'su bu kütüphane rutinlerinin içini
+   değiştirmez; sadece etraflarındaki döngü/indeksleme glue'yu (ihmal edilir pay) etkiler. Yani MCU'nun neden yavaş
+   olduğu (donanım çarpıcı/FPU yok) ile -O'nun neden işe yaramadığı **aynı kök** — tezle birebir örtüşür.
+2. **LUT: -O ılımlı kazanç** (%5.5–8.9), **her hücrede -O2'de doyuyor** (-O3/-O4 aynı). Transandantaller tablolaşınca
+   derlenebilir glue oranı artar → -O biraz iş görür; ama float MAC'ler hâlâ soft-float olduğu için kazanç sınırlı ve erken plato.
+3. **Deploy -O3 = plato değeri** (her yerde); -O2 zaten yakalıyor, ötesi fayda yok — mevcut deploy ayarı yeterli.
+4. Enerji/pencere bu değerlerden türetilir (P≈17.7mW sabit); -O'nun enerjiye etkisi = latency'ye etkisi (çok küçük).
+
+⚠️ **54s figürü KESİN GÖMÜLDÜ (iki bağımsız kanıt):**
+(a) **FastGRNN'in KENDİ güncel kodunda** -O off = ~27ms/step (3.4s/window) ölçüldü — 54s DEĞİL. Yani 54s bir "-O off"
+    ölçümü olamaz; -O'nun tavanı zaten ~%9. (b) Kullanıcı doğruladı: **54s, Week 8'de MPU6050 SENSÖR döngüdeyken
+    yapılan bir live-mode deneyiydi** (I2C read + örnekleme + Q15-öncesi/eski kod dahil), saf-hesaplama latency'si değil.
+Her iki sebeple 54s bir tablo SÜTUNU YAPILAMAZ → "erken, sensörlü live-mode deneyi (Week 8), non-comparable" diye
+etiketli bir dipnot olur. 30.5×/−%96.7 anlatısı ana tablolardan çıkarılır; yerine bu -O-duyarsızlık bulgusu geçer.
+−%46 FastGRNN enerji figürü sağlam kalır (no-LUT ~26ms, -O-bağımsız plato).
+
+### Future Work — sensörlü (MPU6050) gerçek-dünya latency'si
+Bu geceki tüm sayılar SAF INFERENCE (gömülü veri, sensörsüz). Gerçek dağıtımda per-örnek = MPU6050 I2C read + normalize +
+inference. Yapılacak: GRU + LSTM için, LUT{0,1} × sensör-döngüde (TEST_MODE=0 LIVE), uçtan-uca 50Hz latency ölç.
+Harness boşluğu: şu an sadece FastGRNN'de live harness var (run_live_mode + USCI_B0/MPU6050); GRU/LSTM harness'lerine
+I2C sürücüsü PORT edilmeli. Nüans: sensör maliyeti hücre-bağımsız/toplamsal (kıyas ekseni bench inference kalır) ama
+real-time marjını sıkar (örn. no-LUT ~19-23ms + sensör → 20ms bütçesini kesin aşar; LUT ~12-14ms + sensör → sınıra yaklaşır).
 
 ### ⚠️ Metodolojik sınır — busy-wait / aktif-rejim üst-sınırı (dürüstlük notu)
 Firmware BENCH1/BENCH2'de örnekler arasında **LPM (uyku) kullanmıyor, busy-wait yapıyor**
