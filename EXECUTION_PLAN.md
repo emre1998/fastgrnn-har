@@ -64,6 +64,7 @@ Sıradaki: B3 (tablo derleme, koşu/ölçüm gerekmez) → Faz C (yazım).
 
 ## FAZ D — Yayın
 
+- [ ] **D0** REPO REPRODUCIBILITY ÇEKİ-DÜZENİ (kullanıcı isteği, 10 Tem 2026 — gönderim öncesi, hakem "ince eleyip sık dokuma"sına hazırlık): stray dosyaları temizle (untracked .err/logları .gitignore'a, DESKTOP kökündeki alakasız görsel/pdf artıkları), README'ye net repro talimatı (hangi script → hangi tablo/şekil), seed/config şeffaflığı (experiments/*.json ↔ makale tabloları eşlemesi), firmware build talimatı (CCS ayarları: -O3, USE_LUT=1, use_hw_mpy=none), veri indirme scriptleri çalışır teyidi. Hedef: hakem klonlar → tek komutla ana sonuçları üretebilir.
 - [ ] **D1** arXiv v2 yükle (şeffaf changelog).
 - [ ] **D2** ACM TECS'e gönder (arXiv ID cover letter'da).
 
