@@ -40,11 +40,23 @@ gibi okunmamalı: güç sabit + latency farklı ⟹ **enerji/çıkarım latency'
 | GRU  | 0 | 17.70 | 19.273 | 2467.0 | 0.341 | 43.7 |
 | LSTM | 1 | 17.70 | 12.370 | 1583.4 | 0.219 | 28.0 |
 | LSTM | 0 | 17.70 | 22.097 | 2828.4 | 0.391 | 50.1 |
-| FastGRNN | 1 | ~17.8 | 13.900 | 1778.0 | 0.247 | 31.6 |
+| FastGRNN | 1 | 17.72 | 13.900 | 1778.0 | 0.246 | 31.5 |
+| FastGRNN | 0 | 17.66 | 26.100 | 3338.0 | 0.461 | 58.9 |
 
-BULGU (doğru çerçeve): **Ölçülen güç LUT'tan bağımsız (~17.7 mW), ama türetilen enerji/pencere LUT ile GRU'da
-−%37 (43.7→27.5 mJ), LSTM'de −%44 (50.1→28.0 mJ) düşüyor.** Hücreler arası: GRU LUT en verimli (27.5 mJ),
+*Tüm no-LUT satırları AYNI rejim: derleyici-optimize (aynı cl430 -O ayarı). FastGRNN güç değerleri kendi
+ölçümünden (17.72/17.66 mW, docs/energy_measurement.md); GRU/LSTM 17.70 mW — üçü de 1 INA226 LSB içinde eşit.*
+
+BULGU (doğru çerçeve): **Ölçülen güç LUT'tan ve hücreden bağımsız (~17.7 mW), ama türetilen enerji/pencere
+LUT ile GRU'da −%37 (43.7→27.5 mJ), LSTM'de −%44 (50.1→28.0 mJ), FastGRNN'de −%46 (58.9→31.5 mJ) düşüyor.**
+Üç hücre aynı rejimde tutarlı (LUT tasarrufu %37–46 bandı). Hücreler arası: GRU LUT en verimli (27.5 mJ),
 LSTM no-LUT en kötü (50.1 mJ). Makale üç katmanlı: latency (ölçülen) → güç (ölçülen) → enerji (türetilen).
+
+⚠️ **Baseline uyarısı (kritik):** docs/energy_measurement.md'de FastGRNN için raporlanan −%96.7 tasarruf ve
+30.5× hızlanma, no-LUT'un **optimize-EDİLMEMİŞ TI-math kütüphanesi** baseline'ına (421 ms/step, 54 s/window)
+karşıdır — yukarıdaki derleyici-optimize rejimden FARKLI. Unified cross-hücre tablo (bu bölüm) hep
+derleyici-optimize no-LUT kullanır (adil kıyas). 96.7%/30.5× figürü ayrı bir anlatı olarak, açıkça
+"vs optimize-edilmemiş yazılım transandantalleri" etiketiyle kullanılır; GRU/LSTM'in −%37/−%44'ü ile
+DOĞRUDAN yan yana konmaz (yoksa farklı baseline yanıltıcı olur).
 
 ### ⚠️ Metodolojik sınır — busy-wait / aktif-rejim üst-sınırı (dürüstlük notu)
 Firmware BENCH1/BENCH2'de örnekler arasında **LPM (uyku) kullanmıyor, busy-wait yapıyor**
