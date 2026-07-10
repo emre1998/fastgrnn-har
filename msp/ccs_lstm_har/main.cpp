@@ -57,6 +57,120 @@ static void sprint_f3(float v) {
 
 static const float ZERO[3] = {0.0f, 0.0f, 0.0f};
 
+// ============================================================================
+// LIVE MODE (TEST_MODE == 2): real MPU6050 sensor in the loop.
+// Measures TRUE end-to-end per-sample latency = I2C sensor read + lstm_step,
+// paced at 50 Hz, and separately reports the sensor-read vs inference split.
+// USCI_B0 I2C driver ported from ccs_fastgrnn_har (proven). Wiring (MSP-EXP430G2):
+//   VCC->3.3V, GND->GND, P1.6 SCL, P1.7 SDA (REMOVE J5 jumper!), AD0->GND (addr 0x68).
+// ============================================================================
+#define MPU6050_ADDR     0x68
+#define MPU_PWR_MGMT_1   0x6B
+#define MPU_ACCEL_CONFIG 0x1C
+#define MPU_ACCEL_XOUT_H 0x3B
+#define N_LIVE_WINDOWS   4
+
+static void i2c_init(void) {
+    P1SEL  |= BIT6 | BIT7;
+    P1SEL2 |= BIT6 | BIT7;
+    UCB0CTL1 |= UCSWRST;
+    UCB0CTL0 = UCMST | UCMODE_3 | UCSYNC;      // I2C master, 7-bit addr
+    UCB0CTL1 = UCSSEL_2 | UCSWRST;             // SMCLK
+    UCB0BR0 = 0x40; UCB0BR1 = 0x06;            // ~10 kHz @ 16 MHz (safe for clones)
+    UCB0I2CSA = MPU6050_ADDR;
+    UCB0CTL1 &= ~UCSWRST;
+}
+static int i2c_write_reg(uint8_t reg, uint8_t val) {
+    UCB0CTL1 |= UCTR | UCTXSTT;
+    uint16_t to = 50000; while (!(IFG2 & UCB0TXIFG) && --to); if (!to) { UCB0CTL1 |= UCTXSTP; return -1; }
+    UCB0TXBUF = reg;
+    to = 50000; while (!(IFG2 & UCB0TXIFG) && --to); if (!to) { UCB0CTL1 |= UCTXSTP; return -1; }
+    UCB0TXBUF = val;
+    to = 50000; while (!(IFG2 & UCB0TXIFG) && --to); if (!to) { UCB0CTL1 |= UCTXSTP; return -1; }
+    UCB0CTL1 |= UCTXSTP;
+    to = 50000; while ((UCB0CTL1 & UCTXSTP) && --to);
+    return to ? 0 : -1;
+}
+static int i2c_read_bytes(uint8_t reg, uint8_t* buf, uint8_t n) {
+    UCB0CTL1 |= UCTR | UCTXSTT;
+    uint16_t to = 50000; while (!(IFG2 & UCB0TXIFG) && --to); if (!to) { UCB0CTL1 |= UCTXSTP; return -1; }
+    UCB0TXBUF = reg;
+    to = 50000; while (!(IFG2 & UCB0TXIFG) && --to); if (!to) { UCB0CTL1 |= UCTXSTP; return -1; }
+    UCB0CTL1 &= ~UCTR;                         // repeated START for read
+    UCB0CTL1 |= UCTXSTT;
+    to = 50000; while ((UCB0CTL1 & UCTXSTT) && --to); if (!to) { UCB0CTL1 |= UCTXSTP; return -1; }
+    for (uint8_t i = 0; i < n; i++) {
+        if (i == n - 1) UCB0CTL1 |= UCTXSTP;
+        to = 50000; while (!(IFG2 & UCB0RXIFG) && --to); if (!to) return -1;
+        buf[i] = UCB0RXBUF;
+    }
+    to = 50000; while ((UCB0CTL1 & UCTXSTP) && --to);
+    return to ? 0 : -1;
+}
+static int mpu6050_init_dev(void) {
+    if (i2c_write_reg(MPU_PWR_MGMT_1, 0x00)) return -1;    // wake
+    if (i2c_write_reg(MPU_ACCEL_CONFIG, 0x00)) return -1;  // +/-2 g
+    return 0;
+}
+static int mpu6050_read_accel(int16_t* x, int16_t* y, int16_t* z) {
+    uint8_t buf[6];
+    if (i2c_read_bytes(MPU_ACCEL_XOUT_H, buf, 6)) return -1;
+    *x = (int16_t)((((uint16_t)buf[0]) << 8) | buf[1]);
+    *y = (int16_t)((((uint16_t)buf[2]) << 8) | buf[3]);
+    *z = (int16_t)((((uint16_t)buf[4]) << 8) | buf[5]);
+    return 0;
+}
+
+static void run_live_latency(void) {
+    sprint("Mode: LIVE end-to-end latency (MPU6050 + lstm_step, 50Hz)\n");
+    sprint("H="); sprint_u(HIDDEN_SIZE); sprint(" window="); sprint_u(WINDOW_T);
+    sprint(" (LUT = lstm.cpp ayari; ELLE not al)\n");
+    sprint("Wiring: P1.6 SCL, P1.7 SDA, VCC 3.3V, AD0->GND, J5 jumper REMOVED\n");
+
+    sprint("Init I2C + MPU6050... ");
+    i2c_init();
+    __delay_cycles(1600000);          // ~100 ms sensor boot
+    if (mpu6050_init_dev() != 0) {
+        sprint("FAIL (wiring/J5/VCC/AD0 kontrol)\n");
+        while (1) { P1OUT ^= BIT0; __delay_cycles(800000); }
+    }
+    sprint("OK\n");
+
+    const float ACCEL_SCALE = 1.0f / 16384.0f;
+    unsigned long sum_lat = 0, sum_sensor = 0, max_lat = 0;
+    uint16_t over = 0, n = 0;
+
+    for (uint8_t w = 0; w < N_LIVE_WINDOWS; w++) {
+        lstm_reset();
+        for (uint16_t t = 0; t < WINDOW_T; t++) {
+            unsigned long t0 = millis_ccs();
+            int16_t raw[3];
+            if (mpu6050_read_accel(&raw[0], &raw[1], &raw[2]) != 0) continue;
+            unsigned long t_sensor = millis_ccs();
+            float x[3] = { raw[0] * ACCEL_SCALE, raw[1] * ACCEL_SCALE, raw[2] * ACCEL_SCALE };
+            lstm_step(x);
+            unsigned long lat = millis_ccs() - t0;       // sensor + inference
+            sum_lat += lat; sum_sensor += (t_sensor - t0);
+            if (lat > max_lat) max_lat = lat;
+            if (lat > 20) over++;
+            n++;
+            while ((millis_ccs() - t0) < 20) { /* pace 50 Hz */ }
+        }
+        (void)lstm_predict();
+    }
+
+    float avg = (n ? (float)sum_lat / n : 0.0f);
+    float avg_sensor = (n ? (float)sum_sensor / n : 0.0f);
+    sprint("Samples timed:   "); sprint_u(n); sprint("\n");
+    sprint("Avg end-to-end:  "); sprint_f3(avg); sprint(" ms (sensor+inference)\n");
+    sprint("Avg sensor read: "); sprint_f3(avg_sensor); sprint(" ms\n");
+    sprint("Avg inference:   "); sprint_f3(avg - avg_sensor); sprint(" ms\n");
+    sprint("Max end-to-end:  "); sprint_u(max_lat); sprint(" ms\n");
+    sprint("Over-budget(>20): "); sprint_u(over); sprint(" / "); sprint_u(n); sprint("\n");
+    sprint(avg < 20.0f ? "REAL-TIME: OK\n" : "REAL-TIME: FAIL (avg over 20 ms)\n");
+    while (1) { P1OUT ^= BIT0; __delay_cycles(8000000); }
+}
+
 int main(void) {
     WDTCTL = WDTPW | WDTHOLD;
     clock_init(); uart_init(); timer_init();
@@ -83,6 +197,8 @@ int main(void) {
         lstm_step(ZERO);
   #endif
     }
+#elif TEST_MODE == 2
+    run_live_latency();
 #else
     sprint("Mode: LATENCY  H="); sprint_u(HIDDEN_SIZE);
     sprint(" window="); sprint_u(WINDOW_T);
