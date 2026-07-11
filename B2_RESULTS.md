@@ -1,6 +1,42 @@
 # B2 — Donanım Ölçüm Sonuçları
 *Latency + enerji + bellek, GRU/LSTM × MSP430/Arduino. FastGRNN referansı için: docs/energy_measurement.md.*
 
+## Sensörlü GERÇEK-DÜNYA latency + enerji (MPU6050 döngüde, 24 ölçüm, 10 Tem 2026)
+*Live harness (msp/ccs_{cell}_har, TEST_MODE 4=latency / 5=enerji), GERÇEK MPU6050 I2C okuma + inference, 50Hz pace, -O3.
+3 hücre × USE_LUT{0,1} × I2C{10kHz muhafazakar, 100kHz standart} × {latency, enerji}. Sensör INA226 ölçülen raydan beslendi (sistem enerjisi).
+ÖNCEKİ tüm latency sayıları SAF INFERENCE'tı (sensörsüz, zero-input); bunlar UÇTAN-UCA gerçek-dünya.*
+
+**Uçtan-uca latency (sensör okuma + {cell}_step, ms), 512 örnek ortalaması:**
+| Hücre | LUT | I2C | sensör okuma | inference | e2e | REAL-TIME? |
+|-------|-----|-----|--------------|-----------|-----|------------|
+| GRU  | 1 | 100kHz | ~0.8 | 12.0 | **12.01** | ✅ OK |
+| LSTM | 1 | 100kHz | ~0.8 | 12.98 | **12.98** | ✅ OK |
+| FastGRNN | 1 | 100kHz | ~0.8 | 13.97 | **13.98** | ✅ OK |
+| GRU  | 1 | 10kHz | 8.41 | 12.02 | 20.43 | ❌ FAIL (sınır, 229/512) |
+| LSTM | 1 | 10kHz | 8.40 | 12.30 | 20.71 | ❌ FAIL (sınır, 370/512) |
+| FastGRNN | 1 | 10kHz | 8.41 | 13.85 | 22.26 | ❌ FAIL (508/512) |
+| GRU  | 0 | 100kHz | 0.76 | 19.28 | 20.03 | ❌ FAIL (kıl payı, 72/512) |
+| LSTM | 0 | 100kHz | 0.85 | 21.64 | 22.49 | ❌ FAIL (508/512) |
+| FastGRNN | 0 | 100kHz | 0.83 | 26.63 | 27.45 | ❌ FAIL |
+| GRU  | 0 | 10kHz | 8.43 | 19.04 | 27.48 | ❌ FAIL |
+| LSTM | 0 | 10kHz | 8.43 | 21.69 | 30.12 | ❌ FAIL |
+| FastGRNN | 0 | 10kHz | 8.43 | 26.56 | 34.98 | ❌ FAIL |
+
+**Sistem gücü (INA226, MCU+I2C+MPU6050 dahil, steady-state mW):** hücre VE LUT'tan bağımsız, sadece I2C hızına bağlı:
+- **100kHz: ~32.0 mW** (hepsi) · **10kHz: ~33.4–34.4 mW** (hepsi). Bench MCU-only (~17.7mW) → sensörle **~2×** (MPU6050 ~+14mW). 10kHz, 100kHz'den ~2mW fazla (uzun I2C-aktif süre).
+
+BULGULAR (gerçek-dünya, makalenin fizibilite ispatının çekirdeği):
+1. **Real-time SADECE LUT + 100kHz'de mümkün:** GRU 12.01 < LSTM 12.98 < FastGRNN 13.98 — hepsi OK. Başka HİÇBİR kombinasyon değil.
+2. **İki BAĞIMSIZ ön-koşul:** LUT (aktivasyon tabloları) **VE** yeterli sensör I2C hızı (100kHz). Biri eksikse fizibilite kırılır.
+3. **Sensör edinim yolu birinci-derece:** 10kHz I2C okuma = 8.4ms → LUT'lu en hızlı config bile FAIL (20.4–22.3ms). 100kHz = ~0.8ms. Sensör okuma, inference kadar belirleyici.
+4. **no-LUT hiçbir I2C hızında kurtulmaz:** inference tek başına ≥19ms (GRU 19.3 kıl payı, LSTM 21.6, FastGRNN 26.6) → +sensör her zaman 20ms üstü.
+5. **Enerji platform-baskın:** sistem gücü hücre/LUT-bağımsız (~32/34mW); MPU6050 sistem gücünü ~2× yapıyor → pil ömrü ~yarısı. Gerçek dağıtım enerjisi budur.
+6. **Cross-validation:** her live inference, bench (zero-input) sayısıyla ±%5 içinde uyuştu (GRU 12.0≈12.1, LSTM 12.3/13.0≈12.4, FastGRNN 13.97≈13.9; no-LUT GRU 19.0≈19.3, LSTM 21.6≈22.1, FastGRNN 26.6≈26.1) → hem live harness hem bench sayıları DOĞRULANDI.
+7. **DÜRÜSTLÜK NOTU (flaky-kontak):** bir GRU-100k enerji koşusu tekrarlanabilir ~40mW salınım verdi; sebebi marjinal I2C kontağı → sensör okuma NAK'layınca CPU i2c_read timeout döngülerinde (50000-sayaç) fazladan spin. Fiziksel çelişki (100k>10k) fark edildi, kaydedilmedi; kablo reseat sonrası ~32mW stabil geldi. Ölçüm rigor'unun kanıtı.
+
+METODOLOJİ SINIRI: sensör okuma <1ms olduğunda (100kHz), 1ms-çözünürlüklü millis timer'ı sensör/inference SPLIT'ini çözemiyor (faz-kilidi → sensör 0.008ms görünebilir); ama e2e (14+ tik) güvenilir. no-LUT'ta pace kırık olduğu için split düzgün ortalanıyor (sensör ~0.8ms net ölçüldü).
+
+
 ## Latency (TEST_MODE 0, µs)
 | Hücre | Platform | LUT | per-step µs | window µs | %util @50Hz | real-time? |
 |-------|----------|-----|-------------|-----------|-------------|------------|
