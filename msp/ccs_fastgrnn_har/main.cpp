@@ -34,6 +34,11 @@
 #define BENCH_MODE 1
 #endif
 
+// I2C bus speed for LIVE modes (TEST_MODE 4/5): 0 = 10 kHz (conservative), 1 = 100 kHz (standard)
+#ifndef I2C_FAST
+#define I2C_FAST 0
+#endif
+
 static volatile unsigned long g_millis = 0;
 
 static void clock_init(void) {
@@ -341,8 +346,13 @@ static void i2c_init(void) {
     UCB0CTL1 |= UCSWRST;
     UCB0CTL0 = UCMST | UCMODE_3 | UCSYNC;     // I2C master, 7-bit address
     UCB0CTL1 = UCSSEL_2 | UCSWRST;            // SMCLK source
+#if I2C_FAST
+    UCB0BR0 = 0xA0;                           // ~100 kHz @ 16 MHz (standard mode)
+    UCB0BR1 = 0x00;
+#else
     UCB0BR0 = 0x40;                           // 10 kHz @ 16 MHz (safe for clones)
     UCB0BR1 = 0x06;
+#endif
     UCB0I2CSA = MPU6050_ADDR;
     UCB0CTL1 &= ~UCSWRST;
 }
