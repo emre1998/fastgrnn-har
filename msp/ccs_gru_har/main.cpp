@@ -9,6 +9,8 @@
  *   1 = LATENCY (default): warm-up, then time 10 windows of gru_step(zero),
  *       report ms/window, us/step, and utilization vs the 50 Hz budget.
  *   3 = ENERGY benchmark for the INA226 rig (BENCH_MODE 0 idle / 1 stream / 2 cont).
+ *   4 = LIVE-LATENCY: MPU6050 read + gru_step, end-to-end 50 Hz latency over UART.
+ *   5 = LIVE-ENERGY:  MPU6050 sensor loop, UART silenced, for INA226 V/I/W.
  */
 #include <msp430.h>
 #include <stdint.h>

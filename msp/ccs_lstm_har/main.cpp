@@ -4,7 +4,9 @@
  * Mirrors msp/ccs_gru_har/main.cpp and the FastGRNN CCS runner (16 MHz DCO,
  * USCI_A0 9600 baud UART, Timer_A 1 ms tick). Latency + energy modes only.
  *
- * TEST_MODE: 1 = LATENCY (default), 3 = ENERGY (BENCH_MODE 0 idle / 1 stream / 2 cont).
+ * TEST_MODE: 1 = LATENCY (default), 3 = ENERGY (BENCH_MODE 0 idle / 1 stream / 2 cont),
+ *            4 = LIVE-LATENCY (MPU6050 + lstm_step, end-to-end 50 Hz over UART),
+ *            5 = LIVE-ENERGY  (MPU6050 sensor loop, UART silent, for INA226 V/I/W).
  */
 #include <msp430.h>
 #include <stdint.h>

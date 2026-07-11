@@ -16,10 +16,12 @@
 #include "test_data.h"
 
 // Mode selection:
-//   1 = TEST   (embedded test windows, full-window batch)
-//   2 = STREAM (embedded test windows, 50 Hz paced streaming sim)
-//   0 = LIVE   (MPU6050 sensor)
-//   3 = ENERGY (current/power benchmark - no UART, no I2C, no LED)
+//   1 = TEST         (embedded test windows, full-window batch)
+//   2 = STREAM       (embedded test windows, 50 Hz paced streaming sim)
+//   0 = LIVE         (MPU6050 sensor, activity classification demo)
+//   3 = ENERGY       (bench current/power benchmark - no UART, no I2C, no LED)
+//   4 = LIVE-LATENCY (MPU6050 read + fastgrnn_step, end-to-end 50 Hz latency over UART)
+//   5 = LIVE-ENERGY  (MPU6050 sensor loop, UART silenced, for INA226 V/I/W)
 #ifndef TEST_MODE
 #define TEST_MODE 0
 #endif
