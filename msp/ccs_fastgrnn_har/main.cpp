@@ -657,6 +657,89 @@ static void run_live_mode(void) {
     }
 }
 
+// ============================================================================
+// LIVE-LATENCY (TEST_MODE == 4): end-to-end per-sample latency with the real
+// MPU6050 in the loop = I2C sensor read + fastgrnn_step, paced at 50 Hz.
+// Splits sensor-read vs inference. Mirrors ccs_gru_har / ccs_lstm_har exactly.
+// ============================================================================
+static void run_live_latency(void) {
+    serial_print("Mode: LIVE end-to-end latency (MPU6050 + fastgrnn_step, 50Hz)\n");
+    serial_print("window="); serial_print_uint(WINDOW_LEN);
+    serial_print(" (LUT = fastgrnn.cpp ayari; ELLE not al)\n");
+    serial_print("Wiring: P1.6 SCL, P1.7 SDA, VCC 3.3V, AD0->GND, J5 jumper REMOVED\n");
+
+    serial_print("Init I2C + MPU6050... ");
+    i2c_init();
+    __delay_cycles(1600000);          // ~100 ms sensor boot
+    if (mpu6050_init_dev() != 0) {
+        serial_print("FAIL (wiring/J5/VCC/AD0 kontrol)\n");
+        while (1) { P1OUT ^= BIT0; __delay_cycles(800000); }
+    }
+    serial_print("OK\n");
+
+    const float ACCEL_SCALE = 1.0f / 16384.0f;
+    unsigned long sum_lat = 0, sum_sensor = 0, max_lat = 0;
+    uint16_t over = 0, n = 0;
+
+    for (uint8_t w = 0; w < 4; w++) {
+        fastgrnn_reset();
+        for (uint16_t t = 0; t < WINDOW_LEN; t++) {
+            unsigned long t0 = millis_ccs();
+            int16_t raw[3];
+            if (mpu6050_read_accel(&raw[0], &raw[1], &raw[2]) != 0) continue;
+            unsigned long t_sensor = millis_ccs();
+            float x[3] = { raw[0] * ACCEL_SCALE, raw[1] * ACCEL_SCALE, raw[2] * ACCEL_SCALE };
+            fastgrnn_step(x);
+            unsigned long lat = millis_ccs() - t0;       // sensor + inference
+            sum_lat += lat; sum_sensor += (t_sensor - t0);
+            if (lat > max_lat) max_lat = lat;
+            if (lat > 20) over++;
+            n++;
+            while ((millis_ccs() - t0) < 20) { /* pace 50 Hz */ }
+        }
+        (void)fastgrnn_predict();
+    }
+
+    float avg = (n ? (float)sum_lat / n : 0.0f);
+    float avg_sensor = (n ? (float)sum_sensor / n : 0.0f);
+    serial_print("Samples timed:   "); serial_print_uint(n); serial_print("\n");
+    serial_print("Avg end-to-end:  "); serial_print_float3(avg); serial_print(" ms (sensor+inference)\n");
+    serial_print("Avg sensor read: "); serial_print_float3(avg_sensor); serial_print(" ms\n");
+    serial_print("Avg inference:   "); serial_print_float3(avg - avg_sensor); serial_print(" ms\n");
+    serial_print("Max end-to-end:  "); serial_print_uint(max_lat); serial_print(" ms\n");
+    serial_print("Over-budget(>20): "); serial_print_uint(over); serial_print(" / "); serial_print_uint(n); serial_print("\n");
+    serial_print(avg < 20.0f ? "REAL-TIME: OK\n" : "REAL-TIME: FAIL (avg over 20 ms)\n");
+    while (1) { P1OUT ^= BIT0; __delay_cycles(8000000); }
+}
+
+// LIVE-ENERGY (TEST_MODE == 5): continuous 50 Hz sensor+inference loop, UART silenced
+// after init so the INA226 reads clean steady-state system power (MCU + I2C + MPU6050).
+static void run_live_energy(void) {
+    serial_print("Mode: LIVE ENERGY (sensor loop, UART silent after init)\n");
+    i2c_init();
+    __delay_cycles(1600000);
+    if (mpu6050_init_dev() != 0) {
+        serial_print("MPU FAIL (wiring/J5/VCC/AD0)\n");
+        while (1) { P1OUT ^= BIT0; __delay_cycles(800000); }
+    }
+    serial_print("OK - going silent for the ammeter\n");
+    UCA0CTL1 |= UCSWRST;               // silence UART; clean current for INA226
+    P1OUT &= ~BIT0;
+    const float ACCEL_SCALE = 1.0f / 16384.0f;
+    fastgrnn_reset();
+    uint16_t sc = 0;
+    while (1) {
+        unsigned long t0 = millis_ccs();
+        int16_t raw[3];
+        if (mpu6050_read_accel(&raw[0], &raw[1], &raw[2]) == 0) {
+            float x[3] = { raw[0] * ACCEL_SCALE, raw[1] * ACCEL_SCALE, raw[2] * ACCEL_SCALE };
+            fastgrnn_step(x);
+            if (++sc >= WINDOW_LEN) { sc = 0; (void)fastgrnn_predict(); fastgrnn_reset(); }
+        }
+        while ((millis_ccs() - t0) < 20) { /* pace 50 Hz */ }
+    }
+}
+
 int main(void) {
     WDTCTL = WDTPW | WDTHOLD;
 
@@ -699,6 +782,10 @@ int main(void) {
         fastgrnn_step(zero);
   #endif
     }
+#elif TEST_MODE == 4
+    run_live_latency();
+#elif TEST_MODE == 5
+    run_live_energy();
 #else
     serial_print("Mode: LIVE (MPU6050 streaming, 50 Hz)\n");
     run_live_mode();

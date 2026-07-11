@@ -58,11 +58,14 @@ static void sprint_f3(float v) {
 static const float ZERO[3] = {0.0f, 0.0f, 0.0f};
 
 // ============================================================================
-// LIVE MODE (TEST_MODE == 2): real MPU6050 sensor in the loop.
-// Measures TRUE end-to-end per-sample latency = I2C sensor read + lstm_step,
-// paced at 50 Hz, and separately reports the sensor-read vs inference split.
+// LIVE MODES: real MPU6050 sensor in the loop, 50 Hz.
+//   TEST_MODE == 4  LIVE-LATENCY: end-to-end per-sample latency (I2C read + lstm_step),
+//                   split into sensor vs inference, reported over UART.
+//   TEST_MODE == 5  LIVE-ENERGY:  same loop run continuously, UART silenced after init
+//                   so the INA226 reads clean steady-state system power (MCU+I2C+sensor).
 // USCI_B0 I2C driver ported from ccs_fastgrnn_har (proven). Wiring (MSP-EXP430G2):
-//   VCC->3.3V, GND->GND, P1.6 SCL, P1.7 SDA (REMOVE J5 jumper!), AD0->GND (addr 0x68).
+//   VCC->3.3V (from the INA226-measured rail), GND->GND, P1.6 SCL, P1.7 SDA
+//   (REMOVE J5 jumper!), AD0->GND (addr 0x68).
 // ============================================================================
 #define MPU6050_ADDR     0x68
 #define MPU_PWR_MGMT_1   0x6B
@@ -171,6 +174,34 @@ static void run_live_latency(void) {
     while (1) { P1OUT ^= BIT0; __delay_cycles(8000000); }
 }
 
+// LIVE-ENERGY (TEST_MODE == 5): continuous 50 Hz sensor+inference loop, UART silenced
+// after init so the INA226 reads clean steady-state system power (MCU + I2C + MPU6050).
+static void run_live_energy(void) {
+    sprint("Mode: LIVE ENERGY (sensor loop, UART silent after init)\n");
+    i2c_init();
+    __delay_cycles(1600000);
+    if (mpu6050_init_dev() != 0) {
+        sprint("MPU FAIL (wiring/J5/VCC/AD0)\n");
+        while (1) { P1OUT ^= BIT0; __delay_cycles(800000); }
+    }
+    sprint("OK - going silent for the ammeter\n");
+    UCA0CTL1 |= UCSWRST;               // silence UART; clean current for INA226
+    P1OUT &= ~BIT0;
+    const float ACCEL_SCALE = 1.0f / 16384.0f;
+    lstm_reset();
+    uint16_t sc = 0;
+    while (1) {
+        unsigned long t0 = millis_ccs();
+        int16_t raw[3];
+        if (mpu6050_read_accel(&raw[0], &raw[1], &raw[2]) == 0) {
+            float x[3] = { raw[0] * ACCEL_SCALE, raw[1] * ACCEL_SCALE, raw[2] * ACCEL_SCALE };
+            lstm_step(x);
+            if (++sc >= WINDOW_T) { sc = 0; (void)lstm_predict(); lstm_reset(); }
+        }
+        while ((millis_ccs() - t0) < 20) { /* pace 50 Hz */ }
+    }
+}
+
 int main(void) {
     WDTCTL = WDTPW | WDTHOLD;
     clock_init(); uart_init(); timer_init();
@@ -197,8 +228,10 @@ int main(void) {
         lstm_step(ZERO);
   #endif
     }
-#elif TEST_MODE == 2
+#elif TEST_MODE == 4
     run_live_latency();
+#elif TEST_MODE == 5
+    run_live_energy();
 #else
     sprint("Mode: LATENCY  H="); sprint_u(HIDDEN_SIZE);
     sprint(" window="); sprint_u(WINDOW_T);
