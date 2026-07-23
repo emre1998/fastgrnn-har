@@ -1,12 +1,12 @@
-You are a brutally honest senior reviewer for ACM Transactions on Embedded Computing
-Systems (TECS). Help me structure a journal paper revision. Be terse, technical, no
-compliments. Challenge the framing. I want a paper SCHEMA recommendation.
+You are a brutally honest senior reviewer in embedded systems and TinyML. Help me
+structure a paper revision. Be terse, technical, no compliments. Challenge the framing.
+I want a paper SCHEMA recommendation.
 
 == CONTEXT ==
 - arXiv v1 already public + indexed (NASA ADS, Scholar, ResearchGate, 9 platforms).
   v1 claimed "FastGRNN is the best/superior cell for ultra-constrained MCU HAR" --
   but that claim was BORROWED from Kusupati et al., not measured by us.
-- Now revising for a v2 (arXiv) + first journal submission (ACM TECS).
+- Now revising for a v2 (arXiv). The revision is driven by the evidence, not by any venue.
 - Philosophy: truth over publication. We ran controlled experiments; if data contradicts
   the premise, we report the truth.
 - Domain: Human Activity Recognition (HAR) on microcontrollers (Arduino Uno ATmega328P
@@ -70,13 +70,13 @@ The original compressibility thesis is vindicated, but for the right (measured) 
 
 == WHAT I NEED FROM YOU ==
 1. Is the "equal-capacity vs equal-budget distinction" strong enough to be the central
-   contribution of a TECS paper, or is it too thin / already known in the compression lit?
+   contribution of the paper, or is it too thin / already known in the compression lit?
 2. What is the SINGLE strongest framing/title direction? Is FastGRNN the hero, the
    hypothesis-under-test, or a co-equal player?
 3. Recommend a concrete SECTION STRUCTURE (Intro / Related / Method / Experiments /
    Discussion) with what each section must contain and what to LEAD with in the abstract.
 4. What will Reviewer #2 attack hardest? Rank the 3 biggest risks and how to defend each.
-5. Is anything MISSING that a TECS reviewer would demand before acceptance? (e.g. latency
+5. Is anything MISSING that a rigorous reviewer would demand? (e.g. latency
    numbers, more cells, a real baseline from literature, ablations).
 6. How should we honestly handle the v1->v2 narrative shift (claim corrected by our own
    experiments) without it reading as a retraction?

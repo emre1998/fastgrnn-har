@@ -24,7 +24,7 @@
 - **Three evidence layers, all complete:** (1) accuracy on 3 HAR datasets, (2) bench hardware
   deployment (no sensor), (3) real-world hardware with the actual MPU6050 sensor in the loop.
 - **Data collection is DONE.** Remaining work is desk-work: compile the master table (B3), then write
-  the paper (Phase C), then publish (Phase D: arXiv v2 + ACM TECS).
+  the paper (Phase C), then publish (Phase D: arXiv v2 with a transparent changelog).
 - **Repo:** `github.com/emre1998/fastgrnn-har` (branch `master`). Key files listed in §7.
 
 ---
@@ -266,9 +266,9 @@ Data collection is finished. Remaining:
   - Discussion: objective; equal-capacity ≠ equal-byte; FastGRNN advantage is conditional; compression
     isn't free; sensor path is first-order; no-FPU explains why -O can't help.
   - Conclusion + a **"Relation to Prior Version"** note (under-specified → refined, not a retraction).
-- **Phase D — publish.** arXiv v2 (transparent changelog) → ACM TECS (primary target; IEEE Trans.
-  Computers is the full-journal backup). Full journal only, no letters, no venue-specific reframing.
-- **Pre-submission — repo reproducibility pass (task D0):** clean stray files, README with "script →
+- **Phase D — publish.** arXiv v2 with a transparent changelog. The work is written to stand on its own
+  evidence; it is **not** shaped around any particular venue, and no venue-specific reframing is done.
+- **Before publishing — repo reproducibility pass (task D0):** clean stray files, README with "script →
   table/figure" mapping, seed/config transparency, firmware build settings (-O3, USE_LUT=1,
   use_hw_mpy=none). Goal: a reviewer clones and reproduces the headline results with one command.
 

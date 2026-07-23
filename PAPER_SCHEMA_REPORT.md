@@ -1,4 +1,4 @@
-# Makale Şema Raporu — v2 (ACM TECS hedefi)
+# Makale Şema Raporu — v2
 *Claude + Codex ortak analizi, 28 Haziran 2026. Tüm sayılar `experiments/`'ten ölçülü.*
 
 ## 0. Kilitlenen tez (tek cümle)
