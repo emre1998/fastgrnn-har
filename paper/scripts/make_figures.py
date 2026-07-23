@@ -545,6 +545,76 @@ def fig_opt_insensitivity() -> None:
 
 
 # ----------------------------------------------------------------------------
+# 11. Accuracy vs. weight storage — the shrink-H frontier (HAPT)
+# ----------------------------------------------------------------------------
+def fig_pareto_bytes() -> None:
+    """Dense accuracy-vs-size frontier on HAPT, one curve per cell.
+
+    Every point here shares one regime: dense model, 120 epochs, 5 seeds, Q15
+    weight storage (2 B/parameter). The H=16 end of each curve is the Tier-1
+    baseline, which was trained on the same 120-epoch schedule, so it belongs on
+    the same curve.
+
+    Deliberately NOT overlaid: the deployment-budget points of fig_ranking_flip,
+    which use a longer schedule. On HAPT the LSTM budget point *is* the dense
+    H=5 model retrained for 200 epochs, and it gains +0.071 F1 from the extra
+    epochs alone — plotting it here would read as a compression gain.
+    """
+    import glob
+
+    summary = load_json("pareto_summary.json")
+    CELLS   = ["gru", "lstm", "fastgrnn"]
+    CELL_LBL = {"gru": "GRU", "lstm": "LSTM", "fastgrnn": "FastGRNN"}
+    COLOR    = {"gru": "#4c72b0", "lstm": "#8c8c8c", "fastgrnn": "#dd8452"}
+    BUDGET_B = 566          # deployment budget: 283 nonzero params in Q15
+
+    def h16(cell):
+        files = sorted(glob.glob(str(EXP / f"baseline_{cell}_h16_s*_e120.json")))
+        runs  = [json.load(open(f, encoding="utf-8")) for f in files]
+        v = np.array([r["test_macro_f1"] for r in runs])
+        return runs[0]["n_params"], float(v.mean()), float(v.std())
+
+    fig, ax = plt.subplots(figsize=(W1, 2.6))
+
+    for cell in CELLS:
+        pts = [(v["n_params"], v["mean_f1"], v["std_f1"], v["hidden"])
+               for k, v in summary.items() if v["model"] == cell]
+        p16, m16, s16 = h16(cell)
+        pts.append((p16, m16, s16, 16))
+        pts.sort()
+
+        b  = np.array([p * 2 for p, _, _, _ in pts], dtype=float)
+        f1 = np.array([m for _, m, _, _ in pts])
+        sd = np.array([s for _, _, s, _ in pts])
+
+        ax.fill_between(b, f1 - sd, f1 + sd, color=COLOR[cell], alpha=0.11, lw=0)
+        ax.plot(b, f1, "-o", color=COLOR[cell], markersize=3.5,
+                label=CELL_LBL[cell])
+        for bi, fi, (_, _, _, h) in zip(b, f1, pts):
+            # nudge H labels off the budget line so they stay readable
+            near = abs(bi - BUDGET_B) / BUDGET_B < 0.12
+            ax.annotate(f"{h}", (bi, fi), textcoords="offset points",
+                        xytext=(-6, 4) if near else (0, 5),
+                        ha="right" if near else "center",
+                        fontsize=5.2, color=COLOR[cell])
+
+    ax.axvline(BUDGET_B, color="#4c9f70", linestyle="--", linewidth=0.9,
+               zorder=1)
+    ax.annotate(f"deployment budget\n{BUDGET_B} B", xy=(BUDGET_B * 1.08, 0.735),
+                fontsize=6, color="#4c9f70", va="center")
+
+    ax.set_xscale("log")
+    ax.set_xticks([300, 500, 1000, 2000, 3000])
+    ax.get_xaxis().set_major_formatter(mpl.ticker.ScalarFormatter())
+    ax.set_xlim(250, 3400)
+    ax.set_ylim(0.70, 0.96)
+    ax.set_xlabel("Weight storage (bytes, Q15)")
+    ax.set_ylabel("Test macro F1 (5 seeds)")
+    ax.legend(loc="lower right")
+    save(fig, "pareto_bytes.pdf")
+
+
+# ----------------------------------------------------------------------------
 # 7. Warm-up curve (h_state[0] + emitted class over single window)
 # ----------------------------------------------------------------------------
 def fig_warmup_curve() -> None:
@@ -601,6 +671,7 @@ def main() -> None:
     fig_realtime_budget()
     fig_ranking_flip()
     fig_opt_insensitivity()
+    fig_pareto_bytes()
     print("Done.")
 
 

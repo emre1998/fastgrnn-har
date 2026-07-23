@@ -12,7 +12,7 @@ so the repo can be re-run end to end (task D0).
 | F4 | 50 Hz pipeline / timing diagram | C1 | TikZ | todo |
 | F5 | hardware photograph, labelled | methodology | author photo (matches F1) | todo |
 | **F6** | `en/figures/opt_insensitivity.pdf` | C5 | `experiments/opt_level_sweep.json` | ✅ done |
-| F7 | Pareto: accuracy vs deployed bytes | C2 | `experiments/*.json` | todo |
+| **F7** | `en/figures/pareto_bytes.pdf` | C2, C10 | `pareto_summary.json` + `baseline_*_h16_s*_e120.json` | ✅ done |
 
 Existing v1 figures kept: `saturation`, `lowrank_seeds`, `sparsity_curve`,
 `quant_modes`, `per_class_f1`, `deploy_latency`, `warmup_curve`.
@@ -117,4 +117,33 @@ plainly in the caption rather than smoothed away.
   enter; it reaches only the surrounding loop and indexing code, whose share is exactly what
   tabulating the transcendentals increases. FastGRNN's figures are whole-window times divided by 128
   and carry coarser run-to-run scatter, visible as slight non-monotonicity.}
+```
+
+## F7 — Accuracy vs. weight storage: the dense shrink-*H* frontier (HAPT)
+
+Answers the reviewer question F3 invites: *is 566 B a cherry-picked budget?* On HAPT the GRU dominates
+the whole frontier, so no. It also isolates the mechanism — simply shrinking *H* does **not** make
+FastGRNN more byte-efficient than a GRU, so its equal-byte wins on WISDM/PAMAP2 come from keeping
+*H*=16 under low-rank + sparse structure, not from the cell being intrinsically cheaper.
+
+**One regime only, on purpose.** Every point is dense, 120 epochs, 5 seeds; the *H*=16 end of each
+curve is the Tier-1 baseline, trained on that same schedule, so it legitimately belongs on the curve.
+The deployment-budget points of F3 are **not** overlaid — they use a longer schedule, and on HAPT the
+LSTM budget point *is* the dense *H*=5 model retrained for 200 epochs, gaining **+0.071 F1 from epochs
+alone** (0.773 → 0.844). Overlaid, that would read as a compression gain. This is the trap the figure
+is built to avoid; see `run_deploy_budget.py:182`.
+
+```latex
+\caption{Accuracy against weight storage on HAPT: the dense shrink-$H$ frontier. Each point is a dense
+  model at the labelled hidden size, trained on an identical 120-epoch schedule and averaged over
+  5 seeds; bands are $\pm1$ s.d.; storage is 2\,B per parameter in Q15. The GRU dominates at every
+  budget measured, so the equal-byte comparison of Fig.~\ref{fig:flip} is not an artefact of the
+  particular budget chosen. The figure also isolates where FastGRNN's advantage comes from: shrinking
+  $H$ alone does not make FastGRNN more byte-efficient than a GRU here, so its equal-byte wins on
+  WISDM and PAMAP2 come from retaining $H{=}16$ under low-rank and sparse structure rather than from
+  the cell being intrinsically cheaper. FastGRNN's $H{=}8$ and $H{=}12$ points are within one standard
+  deviation of each other. The deployment-budget results are deliberately not overlaid here: they use
+  a longer training schedule, and on HAPT the LSTM budget point is the same dense $H{=}5$ model
+  gaining $+0.071$ F1 from the extra epochs alone, which on this frontier would be misread as a
+  compression gain.}
 ```

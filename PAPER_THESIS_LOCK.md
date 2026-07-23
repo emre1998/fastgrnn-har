@@ -93,6 +93,10 @@ not a silicon one. *(Framing word: "enables/extends," never "democratizes.")*
 - Deployed firmware is a **single config** (HAPT seed0, dense shrink-H); reported alongside 5-seed
   distributions, not instead of them.
 - I2C tested at **10 kHz and 100 kHz**; higher (400 kHz fast-mode) not tested.
+- **Training length is a confound between experiment families.** The size–accuracy frontier is a
+  120-epoch sweep; the deployment-budget results use ~200 epochs. On HAPT the LSTM budget point is the
+  *same* dense H=5 model and gains **+0.071 F1 from the extra epochs alone**. Never plot or compare
+  points across these two families without saying so — an epoch gain reads as a compression gain.
 - The equal-byte budget counts **nonzero weights × 2 B on both sides**, ignoring sparse *index* storage
   for FastGRNN's IHT sparsity and for the pruned baselines alike. Symmetric, but idealized: a real
   sparse deployment pays index overhead. State it — a reviewer will ask.
