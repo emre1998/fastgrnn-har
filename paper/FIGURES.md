@@ -8,7 +8,7 @@ so the repo can be re-run end to end (task D0).
 |---|------|-------|--------|--------|
 | **F1** | `en/figures/fig_measurement_setup.tex` | methodology | hand-drawn TikZ, netlist-verified | ✅ done |
 | **F2** | `en/figures/realtime_budget.pdf` | C1, C3, C4 | `experiments/sensor_in_loop_matrix.json` | ✅ done |
-| F3 | ranking flip (equal-H vs equal-byte) | C2, C10 | `experiments/*.json` (3 datasets) | todo |
+| **F3** | `en/figures/ranking_flip.pdf` | C2, C10 | `baseline_*_h16_s*_e120.json` + `best_route_summary.json` | ✅ done |
 | F4 | 50 Hz pipeline / timing diagram | C1 | TikZ | todo |
 | F5 | hardware photograph, labelled | methodology | author photo (matches F1) | todo |
 | F6 | `-O` insensitivity flat-lines | C5 | `B2_RESULTS.md` -O sweep (36 runs) | todo |
@@ -60,4 +60,33 @@ flagged `*` — no inferred split is plotted.
   inference-only benchmarks. $^{*}$At 100\,kHz with LUT the sensor/inference split
   falls below the 1\,ms timer tick and is not resolvable; the bar reports the
   measured end-to-end value without an inferred split.}
+```
+
+## F3 — Ranking reversal across evaluation regimes ⭐
+
+Slopegraph, three panels (one per dataset). The **crossing of the lines is the finding** — no
+separate "flip" annotation needed. Left: equal hidden size H=16. Right: equal deployment
+footprint (~283 nonzero params / 566 B). Error bars are ±1 s.d. over 5 seeds.
+
+**Fairness constraint baked into the code:** the right-hand point for GRU/LSTM is the **best of two
+compression routes** (shrink-H at 200 epochs, or magnitude-pruned H=16), read from
+`best_route_summary.json` — the strongest baseline we could build at the budget, not the most
+convenient one. Reporting the shrink-H route alone would inflate the FastGRNN margin from +0.033 to
++0.12 on WISDM and turn a GRU win into a "tie" on HAPT.
+
+Per-panel y-scales (a slopegraph convention): the three datasets sit at very different F1 levels, and a
+shared axis would compress HAPT into a band where the crossings vanish. Every endpoint is labelled with
+its value so absolute levels stay readable.
+
+```latex
+\caption{Deployment constraints reverse the model ranking. Left of each panel: all cells at equal
+  hidden size ($H{=}16$); right: all cells at an equal deployment footprint ($\approx$283 nonzero
+  parameters, 566\,B in Q15). Points are means over 5 seeds, bars $\pm1$ s.d.; the ringed marker is the
+  cell that wins at the byte budget. At equal capacity the GRU is the best cell on all three datasets
+  and FastGRNN is last on HAPT. At an equal byte budget FastGRNN wins on WISDM ($+0.033$) and PAMAP2
+  ($+0.090$), because GRU and LSTM must spend the budget on capacity --- collapsing $H$ or pruning away
+  most of their weights --- while FastGRNN keeps $H{=}16$ through low-rank and sparse structure. The
+  GRU still wins on HAPT. For GRU and LSTM the budget point is the better of two compression routes
+  (shrink-$H$ retrained for 200 epochs, or magnitude-pruned $H{=}16$), so the comparison is against the
+  strongest baseline available at the budget. Note the per-panel vertical scales.}
 ```

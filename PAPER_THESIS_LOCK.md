@@ -93,6 +93,12 @@ not a silicon one. *(Framing word: "enables/extends," never "democratizes.")*
 - Deployed firmware is a **single config** (HAPT seed0, dense shrink-H); reported alongside 5-seed
   distributions, not instead of them.
 - I2C tested at **10 kHz and 100 kHz**; higher (400 kHz fast-mode) not tested.
+- The equal-byte budget counts **nonzero weights × 2 B on both sides**, ignoring sparse *index* storage
+  for FastGRNN's IHT sparsity and for the pruned baselines alike. Symmetric, but idealized: a real
+  sparse deployment pays index overhead. State it — a reviewer will ask.
+- At the byte budget the FastGRNN margin is **modest** (WISDM +0.033, PAMAP2 +0.090) once GRU/LSTM are
+  given their best route, and on **HAPT the GRU still wins** (0.902 vs 0.869). Report it that way; the
+  larger margins that appear if only the shrink-H route is reported are not the fair comparison.
 - Compression **structure** differs per cell by design (fairness): FastGRNN low-rank+IHT+Q15;
   GRU/LSTM shrink-H or pruning + weight-Q15. Q15 quantization is the **common final step** — this is
   NOT the same as "all cells compressed identically." State the distinction explicitly to preempt the

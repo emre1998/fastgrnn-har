@@ -72,18 +72,30 @@ All pipelines reproduce HAPT behavior exactly; code parametric on `--data/--tag`
 → **GRU wins all 3.** LSTM is weakest + most unstable despite most params. FastGRNN is compact
 (440 params vs GRU 1110), stable, competitive #2 on WISDM/PAMAP2.
 
-**Deployment budget — ~equal byte (~283 params / 566 B), 200 epochs, Q15, each cell's own compression:**
+**Deployment budget — ~equal byte (~283 params / 566 B), 200 epochs, Q15, each cell's own compression.
+GRU/LSTM shown at their BEST of two routes** (shrink-H, or magnitude-pruned H=16) —
+`experiments/best_route_summary.json`:
 
 | Dataset | GRU | LSTM | FastGRNN |
 |---|---|---|---|
-| HAPT | 0.880 | 0.844 | 0.869 |
-| WISDM | 0.683 | 0.674 | **0.800** |
-| PAMAP2 | 0.354 | 0.306 | **0.444** |
+| HAPT | **0.902** (pruned) | 0.844 (shrink) | 0.869 |
+| WISDM | 0.767 (pruned) | 0.674 (shrink) | **0.800** |
+| PAMAP2 | 0.354 (shrink) | 0.306 (shrink) | **0.444** |
 
-→ **FastGRNN wins 2/3** (WISDM +0.12, PAMAP2 +0.11); HAPT ~tie (GRU 0.880 vs FastGRNN 0.869).
-Mechanism: at a fixed byte budget GRU collapses H16→H6 (WISDM 0.764→0.683); FastGRNN keeps H=16 via
-low-rank+sparse. **Fairness controls done:** GRU/LSTM re-run at 200 epochs (equal training), two
-compression routes each (shrink-H and pruning), best-of taken. FastGRNN win survives all.
+→ **FastGRNN wins 2/3** (WISDM +0.033, PAMAP2 +0.090); on **HAPT GRU still wins** (0.902 vs 0.869) —
+this is *not* a tie, and the paper must not call it one. Mechanism: at a fixed byte budget GRU must
+either collapse H16→H6 or prune away 78% of its weights, while FastGRNN keeps H=16 via low-rank+sparse.
+**Fairness controls done:** GRU/LSTM re-run at 200 epochs (equal training), two compression routes each,
+best-of taken. FastGRNN's 2/3 win survives all of it — but the margins are modest, not the ~0.12 you get
+if you only report the weaker shrink-H route.
+
+> ⚠️ **Do not quote the shrink-only numbers** (HAPT GRU 0.880, WISDM GRU 0.683). They are the *weaker*
+> baseline route and overstate FastGRNN's advantage. An earlier revision of this brief had them in the
+> table while simultaneously claiming best-of was taken; corrected 2026-07-24.
+>
+> **Byte-accounting caveat:** the budget counts `nonzero × 2 B` for both FastGRNN's IHT sparsity and the
+> pruned baselines (`analyze_footprint.py`), i.e. sparse **index storage is ignored on both sides**.
+> This keeps the comparison symmetric but is an idealization — state it in Limitations.
 
 **Compression ablation (dense→low-rank→+sparse→+Q15):** instability originates at the **low-rank** step
 (HAPT-specific, seed-sensitive), NOT at IHT/sparsity; **Q15 is near-lossless everywhere** (the paper's

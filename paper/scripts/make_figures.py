@@ -366,6 +366,110 @@ def fig_realtime_budget() -> None:
 
 
 # ----------------------------------------------------------------------------
+# 9. Ranking flip: equal capacity (H=16) vs equal deployment byte budget
+# ----------------------------------------------------------------------------
+def fig_ranking_flip() -> None:
+    """Slopegraph — the crossing of the lines *is* the ranking reversal.
+
+    Left  regime: equal hidden size H=16 (architecture quality).
+    Right regime: equal deployment footprint (~283 nonzero params / 566 B).
+
+    For GRU/LSTM the right-hand point is the BEST of the two compression routes
+    (shrink-H at 200 epochs, or magnitude-pruned H=16), i.e. the strongest
+    baseline we could build at the budget — not the most convenient one.
+    """
+    import glob
+
+    TIER1_PAT = {
+        "hapt":   "baseline_{c}_h16_s*_e120.json",
+        "wisdm":  "baseline_wisdm_{c}_h16_s*_e120.json",
+        "pamap2": "baseline_pamap2_{c}_h16_s*_e120.json",
+    }
+    DS_TITLE = {"hapt": "HAPT", "wisdm": "WISDM", "pamap2": "PAMAP2"}
+    CELLS    = ["gru", "lstm", "fastgrnn"]
+    CELL_LBL = {"gru": "GRU", "lstm": "LSTM", "fastgrnn": "FastGRNN"}
+    COLOR    = {"gru": "#4c72b0", "lstm": "#8c8c8c", "fastgrnn": "#dd8452"}
+
+    best = load_json("best_route_summary.json")
+
+    def tier1(ds, c):
+        files = sorted(glob.glob(str(EXP / TIER1_PAT[ds].format(c=c))))
+        v = np.array([json.load(open(f, encoding="utf-8"))["test_macro_f1"]
+                      for f in files])
+        return float(v.mean()), float(v.std())
+
+    def budget(ds, c):
+        d = best[ds][c]
+        if c == "fastgrnn":
+            return d["mean"], d["std"]
+        r = d["best_route"]                       # "shrink" or "pruned"
+        return d["best_mean"], d[f"{r}_std"]
+
+    fig, axes = plt.subplots(1, 3, figsize=(W2, 2.7))
+
+    def spread(vals: dict, gap: float) -> dict:
+        """Push near-identical label positions apart so they stay readable.
+        Only the label moves; the plotted point stays at its true value."""
+        order = sorted(vals, key=vals.get)
+        out, prev = {}, None
+        for c in order:
+            y = vals[c] if prev is None else max(vals[c], prev + gap)
+            out[c], prev = y, y
+        return out
+
+    for ax, ds in zip(axes, TIER1_PAT):
+        pts = {c: (tier1(ds, c), budget(ds, c)) for c in CELLS}
+
+        lo = min(min(m - s for m, s in p) for p in pts.values())
+        hi = max(max(m + s for m, s in p) for p in pts.values())
+        pad = 0.10 * (hi - lo)
+        ax.set_ylim(lo - pad, hi + pad)
+
+        for c in CELLS:
+            (m0, s0), (m1, s1) = pts[c]
+            ax.errorbar([0, 1], [m0, m1], yerr=[s0, s1], color=COLOR[c],
+                        marker="o", markersize=4, linewidth=1.4,
+                        elinewidth=0.7, capsize=2.0, alpha=0.95, zorder=3)
+
+        gap  = 0.055 * (hi - lo + 2 * pad)
+        left  = spread({c: pts[c][0][0] for c in CELLS}, gap)
+        right = spread({c: pts[c][1][0] for c in CELLS}, gap)
+        for c in CELLS:
+            ax.annotate(f"{pts[c][0][0]:.3f}", (0, left[c]),
+                        textcoords="offset points", xytext=(-6, 0),
+                        ha="right", va="center", fontsize=6.5, color=COLOR[c])
+            ax.annotate(f"{pts[c][1][0]:.3f}", (1, right[c]),
+                        textcoords="offset points", xytext=(6, 0),
+                        ha="left", va="center", fontsize=6.5, color=COLOR[c],
+                        fontweight="bold" if best[ds]["winner"] == c else "normal")
+
+        # ring the cell that wins at the byte budget
+        w = best[ds]["winner"]
+        ax.scatter([1], [pts[w][1][0]], s=70, facecolors="none",
+                   edgecolors=COLOR[w], linewidths=1.1, zorder=4)
+
+        ax.set_xlim(-0.62, 1.62)
+        ax.set_xticks([0, 1])
+        ax.set_xticklabels(["equal\ncapacity", "equal\nbyte budget"], fontsize=7)
+        ax.set_title(DS_TITLE[ds], fontsize=9)
+        ax.grid(axis="x", visible=False)
+        ax.tick_params(axis="y", labelsize=6.5)
+
+    axes[0].set_ylabel("Test macro F1 (5 seeds)")
+
+    handles = [mpl.lines.Line2D([], [], color=COLOR[c], marker="o",
+                                markersize=4, lw=1.4, label=CELL_LBL[c])
+               for c in CELLS]
+    handles.append(mpl.lines.Line2D([], [], color="#555555", marker="o",
+                                    markerfacecolor="none", markersize=8,
+                                    lw=0, label="winner at the byte budget"))
+    fig.legend(handles=handles, loc="lower center", ncol=4,
+               bbox_to_anchor=(0.5, -0.13), fontsize=7)
+    fig.subplots_adjust(wspace=0.42)
+    save(fig, "ranking_flip.pdf")
+
+
+# ----------------------------------------------------------------------------
 # 7. Warm-up curve (h_state[0] + emitted class over single window)
 # ----------------------------------------------------------------------------
 def fig_warmup_curve() -> None:
@@ -420,6 +524,7 @@ def main() -> None:
     fig_deploy_latency()
     fig_warmup_curve()
     fig_realtime_budget()
+    fig_ranking_flip()
     print("Done.")
 
 
