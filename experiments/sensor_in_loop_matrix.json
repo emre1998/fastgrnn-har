@@ -1,0 +1,36 @@
+{
+  "_source": "B2_RESULTS.md — 'Sensorlu GERCEK-DUNYA latency + enerji' section, measured 2026-07-10",
+  "_description": "Sensor-in-the-loop end-to-end latency and system power on MSP430G2553. Real MPU6050 read over USCI_B0 I2C + one recurrent step, 50 Hz pacing, 512 samples per run. Firmware: msp/ccs_{cell}_har, TEST_MODE 4 (latency) / 5 (energy), -O3, USE_LUT selects table-based activations, I2C_FAST selects the bus clock.",
+  "_measurement": {
+    "latency": "measured in firmware with a 1 ms Timer_A tick, averaged over 512 consecutive samples",
+    "power": "measured with INA226 (R_sh = 0.1 ohm) on the target supply rail; the MPU6050 is powered from the same measured rail, so power is system power (MCU + I2C + sensor)",
+    "timer_resolution_ms": 1.0,
+    "split_caveat": "When the sensor read costs less than the 1 ms tick (LUT + 100 kHz), the sensor/inference split phase-locks and is not resolvable; the end-to-end value is still reliable (14+ ticks). Runs where sensor_ms + inference_ms does not reconstruct e2e_ms are flagged split_resolved = false."
+  },
+  "deadline_ms": 20.0,
+  "sample_rate_hz": 50,
+  "n_samples_per_run": 512,
+  "runs": [
+    {"cell": "GRU",      "lut": 1, "i2c_khz": 100, "sensor_ms": 0.80, "inference_ms": 12.00, "e2e_ms": 12.01, "overruns": 0,   "split_resolved": false, "realtime": true},
+    {"cell": "LSTM",     "lut": 1, "i2c_khz": 100, "sensor_ms": 0.80, "inference_ms": 12.98, "e2e_ms": 12.98, "overruns": 0,   "split_resolved": false, "realtime": true},
+    {"cell": "FastGRNN", "lut": 1, "i2c_khz": 100, "sensor_ms": 0.80, "inference_ms": 13.97, "e2e_ms": 13.98, "overruns": 0,   "split_resolved": false, "realtime": true},
+
+    {"cell": "GRU",      "lut": 0, "i2c_khz": 100, "sensor_ms": 0.76, "inference_ms": 19.28, "e2e_ms": 20.03, "overruns": 72,  "split_resolved": true,  "realtime": false},
+    {"cell": "LSTM",     "lut": 0, "i2c_khz": 100, "sensor_ms": 0.85, "inference_ms": 21.64, "e2e_ms": 22.49, "overruns": 508, "split_resolved": true,  "realtime": false},
+    {"cell": "FastGRNN", "lut": 0, "i2c_khz": 100, "sensor_ms": 0.83, "inference_ms": 26.63, "e2e_ms": 27.45, "overruns": 512, "split_resolved": true,  "realtime": false},
+
+    {"cell": "GRU",      "lut": 1, "i2c_khz": 10,  "sensor_ms": 8.41, "inference_ms": 12.02, "e2e_ms": 20.43, "overruns": 229, "split_resolved": true,  "realtime": false},
+    {"cell": "LSTM",     "lut": 1, "i2c_khz": 10,  "sensor_ms": 8.40, "inference_ms": 12.30, "e2e_ms": 20.71, "overruns": 370, "split_resolved": true,  "realtime": false},
+    {"cell": "FastGRNN", "lut": 1, "i2c_khz": 10,  "sensor_ms": 8.41, "inference_ms": 13.85, "e2e_ms": 22.26, "overruns": 508, "split_resolved": true,  "realtime": false},
+
+    {"cell": "GRU",      "lut": 0, "i2c_khz": 10,  "sensor_ms": 8.43, "inference_ms": 19.04, "e2e_ms": 27.48, "overruns": 512, "split_resolved": true,  "realtime": false},
+    {"cell": "LSTM",     "lut": 0, "i2c_khz": 10,  "sensor_ms": 8.43, "inference_ms": 21.69, "e2e_ms": 30.12, "overruns": 512, "split_resolved": true,  "realtime": false},
+    {"cell": "FastGRNN", "lut": 0, "i2c_khz": 10,  "sensor_ms": 8.43, "inference_ms": 26.56, "e2e_ms": 34.98, "overruns": 512, "split_resolved": true,  "realtime": false}
+  ],
+  "system_power_mw": {
+    "_note": "Steady-state INA226 reading. Independent of cell and of LUT; depends only on the I2C bus clock (longer bus-active time at 10 kHz).",
+    "i2c_100khz": {"typical": 32.0},
+    "i2c_10khz": {"min": 33.4, "max": 34.4},
+    "bench_mcu_only": {"typical": 17.7, "_note": "TEST_MODE 3, sensor detached — for reference"}
+  }
+}

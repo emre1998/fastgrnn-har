@@ -13,6 +13,7 @@ Figures produced:
     5. per_class_f1.pdf     — per-class F1 baseline vs final
     6. deploy_latency.pdf   — Python vs Arduino vs MSP430 per-sample latency
     7. warmup_curve.pdf     — h_state[0] over 50Hz window + class trajectory
+    8. realtime_budget.pdf  — sensor-in-loop: sensor+inference vs 20 ms deadline
 """
 
 from __future__ import annotations
@@ -175,7 +176,7 @@ def fig_sparsity_curve() -> None:
                 fmt="D", color="C3", capsize=4, markersize=6,
                 label=f"5 seeds (sp=50): {sp50_mean:.3f} ± {sp50_std:.3f}")
 
-    ax.set_xlabel("Target sparsity (\\%)")
+    ax.set_xlabel("Target sparsity (%)")
     ax.set_ylabel("Test Macro F1")
     ax.set_xticks(sps)
     ax.set_ylim(0.4, 1.0)
@@ -277,6 +278,94 @@ def fig_deploy_latency() -> None:
 
 
 # ----------------------------------------------------------------------------
+# 8. Real-time budget: sensor + inference vs the 20 ms deadline (sensor in loop)
+# ----------------------------------------------------------------------------
+def fig_realtime_budget() -> None:
+    data     = load_json("sensor_in_loop_matrix.json")
+    runs     = data["runs"]
+    deadline = data["deadline_ms"]
+
+    CELLS   = ["GRU", "LSTM", "FastGRNN"]
+    C_SENS  = "#8c8c8c"      # sensor acquisition segment
+    C_PASS  = "#4c9f70"      # inference segment, deadline met
+    C_FAIL  = "#d1615d"      # inference segment, deadline missed
+    YMAX    = 38.0
+
+    def pick(cell, lut, khz):
+        return next(r for r in runs
+                    if r["cell"] == cell and r["lut"] == lut and r["i2c_khz"] == khz)
+
+    # x layout: LUT group at 0,1.2,2.4 — no-LUT group at 4.4,5.6,6.8
+    xs   = [0, 1.2, 2.4, 4.4, 5.6, 6.8]
+    grid = [(c, l) for l in (1, 0) for c in CELLS]
+
+    fig, axes = plt.subplots(1, 2, figsize=(W2, 2.9), sharey=True)
+
+    for ax, khz, tag in zip(axes, (100, 10), ("a", "b")):
+        ax.set_axisbelow(True)
+        # infeasible region
+        ax.axhspan(deadline, YMAX, color=C_FAIL, alpha=0.07, zorder=0, lw=0)
+        ax.axhline(deadline, color=C_FAIL, linestyle="--", linewidth=1.0, zorder=1)
+
+        for x, (cell, lut) in zip(xs, grid):
+            r    = pick(cell, lut, khz)
+            e2e  = r["e2e_ms"]
+            cinf = C_PASS if r["realtime"] else C_FAIL
+
+            if r["split_resolved"]:
+                s = r["sensor_ms"]
+                ax.bar(x, s,       0.72, color=C_SENS, edgecolor="none", zorder=2)
+                ax.bar(x, e2e - s, 0.72, bottom=s, color=cinf,
+                       edgecolor="none", zorder=2)
+                star = ""
+            else:
+                # Sensor/inference split below the 1 ms timer tick: report the
+                # measured end-to-end value only, do not invent a split.
+                ax.bar(x, e2e, 0.72, color=cinf, edgecolor="none", zorder=2)
+                star = "*"
+
+            ax.text(x, e2e + 0.7, f"{e2e:.2f}{star}", ha="center", fontsize=6.5,
+                    color=cinf, fontweight="bold" if r["realtime"] else "normal")
+
+        # group separator + group labels (below the cell tick labels)
+        ax.axvline(3.4, color="#d0d0d0", linewidth=0.7, zorder=1)
+        for gx, gl in ((1.2, "LUT activations"), (5.6, "no LUT (libm expf/tanhf)")):
+            ax.annotate(gl, xy=(gx, -0.145), xycoords=("data", "axes fraction"),
+                        ha="center", va="top", fontsize=7)
+
+        ax.set_xticks(xs)
+        ax.set_xticklabels([c for c, _ in grid], fontsize=6.5)
+        ax.set_xlim(-0.9, 7.7)
+        ax.set_ylim(0, YMAX)
+        ax.set_title(f"({tag})  I$^2$C @ {khz} kHz", fontsize=8.5)
+        ax.grid(axis="x", visible=False)
+
+    axes[0].set_ylabel("End-to-end latency per sample (ms)")
+
+    # (a) the only feasible corner of the whole design space
+    axes[0].text(1.2, 17.6, "only real-time-feasible\nconfiguration",
+                 ha="center", va="center", fontsize=6.5, color=C_PASS)
+
+    # (b) the sensor floor that sinks every configuration
+    axes[1].axhline(8.41, color="#4d4d4d", linestyle=":", linewidth=0.8, zorder=3)
+    axes[1].text(3.4, 9.0, "8.4 ms", ha="center", va="bottom", fontsize=6.5,
+                 color="#4d4d4d", zorder=4,
+                 bbox=dict(fc="white", ec="none", alpha=0.9, pad=1.2))
+
+    handles = [
+        mpl.patches.Patch(color=C_SENS, label="Sensor acquisition (MPU6050, I$^2$C)"),
+        mpl.patches.Patch(color=C_PASS, label="Inference — deadline met"),
+        mpl.patches.Patch(color=C_FAIL, label="Inference — deadline missed"),
+        mpl.lines.Line2D([], [], color=C_FAIL, linestyle="--", lw=1.0,
+                         label=f"{deadline:.0f} ms deadline (50 Hz)"),
+    ]
+    fig.legend(handles=handles, loc="lower center", ncol=4,
+               bbox_to_anchor=(0.5, -0.19), fontsize=7)
+    fig.subplots_adjust(wspace=0.08)
+    save(fig, "realtime_budget.pdf")
+
+
+# ----------------------------------------------------------------------------
 # 7. Warm-up curve (h_state[0] + emitted class over single window)
 # ----------------------------------------------------------------------------
 def fig_warmup_curve() -> None:
@@ -330,6 +419,7 @@ def main() -> None:
     fig_per_class_f1()
     fig_deploy_latency()
     fig_warmup_curve()
+    fig_realtime_budget()
     print("Done.")
 
 
