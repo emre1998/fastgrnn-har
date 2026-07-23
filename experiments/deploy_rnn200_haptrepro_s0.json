@@ -1,0 +1,22 @@
+{
+  "dataset": "haptrepro",
+  "seed": 0,
+  "epochs": 200,
+  "budget": 283,
+  "gru": {
+    "hidden": 6,
+    "fp32_f1": 0.9200088139249737,
+    "q15_f1": 0.9200088139249737,
+    "total_nonzero": 240,
+    "best_epoch": 182,
+    "best_val_f1": 0.9740996370910534
+  },
+  "lstm": {
+    "hidden": 5,
+    "fp32_f1": 0.8561546321669194,
+    "q15_f1": 0.8558930500631367,
+    "total_nonzero": 236,
+    "best_epoch": 193,
+    "best_val_f1": 0.9034081640095128
+  }
+}
