@@ -11,7 +11,7 @@ so the repo can be re-run end to end (task D0).
 | **F3** | `en/figures/ranking_flip.pdf` | C2, C10 | `baseline_*_h16_s*_e120.json` + `best_route_summary.json` | ✅ done |
 | F4 | 50 Hz pipeline / timing diagram | C1 | TikZ | todo |
 | F5 | hardware photograph, labelled | methodology | author photo (matches F1) | todo |
-| F6 | `-O` insensitivity flat-lines | C5 | `B2_RESULTS.md` -O sweep (36 runs) | todo |
+| **F6** | `en/figures/opt_insensitivity.pdf` | C5 | `experiments/opt_level_sweep.json` | ✅ done |
 | F7 | Pareto: accuracy vs deployed bytes | C2 | `experiments/*.json` | todo |
 
 Existing v1 figures kept: `saturation`, `lowrank_seeds`, `sparsity_curve`,
@@ -89,4 +89,32 @@ its value so absolute levels stay readable.
   GRU still wins on HAPT. For GRU and LSTM the budget point is the better of two compression routes
   (shrink-$H$ retrained for 200 epochs, or magnitude-pruned $H{=}16$), so the comparison is against the
   strongest baseline available at the budget. Note the per-panel vertical scales.}
+```
+
+## F6 — Compiler `-O` insensitivity (the no-FPU mechanism)
+
+Two panels from the same 36 runs. Panel (a) is absolute latency **with the y-axis at zero** — the
+honest scale, showing two flat bands separated by the LUT gap. Panel (b) restates the same runs as
+change relative to `-O off`, so the size of the compiler effect is *quantified* rather than hidden by
+panel (a)'s scale. A reviewer who suspects the zero baseline is flattering us can read the effect
+directly off (b).
+
+Non-monotonicity in the FastGRNN traces is real measurement scatter, not a plotting artifact: its bench
+figure is a whole-window time divided by 128, which is coarser than the GRU/LSTM per-step timing. Said
+plainly in the caption rather than smoothed away.
+
+```latex
+\caption{Compiler optimization is nearly irrelevant on this platform. Identical source; only the CCS
+  optimization level changes. Three cells $\times$ LUT/no-LUT $\times$ six levels = 36 bench
+  measurements (inference only, sensor detached). (a) The configurations form two flat bands:
+  replacing library \texttt{expf}/\texttt{tanhf} with 256-entry tables removes 37--46\% of the step
+  time, and no optimization level comes close to closing that gap. (b) The same runs as change
+  relative to \mbox{$-$O off}: the compiler buys 0--4.6\% without LUT --- the LSTM is flat to the last
+  digit --- and 5.5--8.9\% with it, saturating at \mbox{$-$O2} for every cell, so the deployed
+  \mbox{$-$O3} build already sits on the plateau. The cause is the same one that makes the platform
+  slow: with no FPU and no hardware multiplier, every floating-point multiply--accumulate and every
+  transcendental is a precompiled soft-float library call that the project's optimization level cannot
+  enter; it reaches only the surrounding loop and indexing code, whose share is exactly what
+  tabulating the transcendentals increases. FastGRNN's figures are whole-window times divided by 128
+  and carry coarser run-to-run scatter, visible as slight non-monotonicity.}
 ```

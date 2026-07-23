@@ -1,0 +1,32 @@
+{
+  "_source": "B2_RESULTS.md — 'Derleyici -O duyarliligi — TAM SWEEP', measured 2026-07-09",
+  "_description": "Controlled full matrix: identical source, only the CCS Optimization level changed. 3 cells x USE_LUT{0,1} x -O{off,0,1,2,3,4} = 36 measurements. Bench inference only (no sensor), MSP430G2553 @ 16 MHz.",
+  "_measurement": {
+    "gru_lstm": "TEST_MODE 1, host-timed over zero input, per recurrent step",
+    "fastgrnn": "run_embedded_tests 'Inference time' on real test data; per-step = window / 128, so it carries coarser run-to-run scatter than the GRU/LSTM figures (visible as non-monotonicity at some -O levels)",
+    "hw_multiplier": "--use_hw_mpy = none (MSP430G2553 has no hardware multiplier and no FPU)",
+    "power_note": "System power is flat at ~17.7 mW across all 36 runs, so energy per window scales with these latencies (E = P x t)",
+    "flash_note": "Flash was not swept; the deployed Flash figure is the production build at -O3"
+  },
+  "levels": ["off", "0", "1", "2", "3", "4"],
+  "unit": "ms per recurrent step",
+  "latency_ms": {
+    "lut": {
+      "GRU":      [13.041, 12.504, 12.353, 12.116, 12.116, 12.116],
+      "LSTM":     [13.091, 12.609, 12.442, 12.371, 12.371, 12.371],
+      "FastGRNN": [15.3,   14.2,   14.2,   13.9,   13.9,   13.9]
+    },
+    "no_lut": {
+      "GRU":      [20.202, 19.663, 19.510, 19.273, 19.273, 19.273],
+      "LSTM":     [22.801, 22.800, 22.800, 22.800, 22.800, 22.800],
+      "FastGRNN": [27.2,   26.2,   26.8,   26.1,   26.1,   26.6]
+    }
+  },
+  "deployed_level": "3",
+  "plateau_level": "2",
+  "findings": {
+    "no_lut_gain_pct": "0 to 4.6 (LSTM is flat to the last digit)",
+    "lut_gain_pct": "5.5 to 8.9, saturating at -O2 for every cell",
+    "mechanism": "No FPU and no hardware multiplier means every float multiply/add -- and expf/tanhf -- is a precompiled TI RTS soft-float library call. The project -O level cannot change the inside of those routines; it only touches the surrounding loop and indexing glue. Tabulating the transcendentals raises the share of compilable glue, which is why -O buys a little more with LUT enabled, and why it still saturates early."
+  }
+}

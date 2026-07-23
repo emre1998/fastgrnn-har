@@ -470,6 +470,81 @@ def fig_ranking_flip() -> None:
 
 
 # ----------------------------------------------------------------------------
+# 10. Compiler -O insensitivity (the no-FPU mechanism)
+# ----------------------------------------------------------------------------
+def fig_opt_insensitivity() -> None:
+    """36-run sweep: identical source, only the CCS optimization level changes.
+
+    (a) absolute latency, y from zero — two flat bands separated by the LUT gap.
+    (b) the same data as speedup relative to -O off, so the size of the compiler
+        effect is stated explicitly rather than hidden by the absolute scale.
+    """
+    data   = load_json("opt_level_sweep.json")
+    levels = data["levels"]
+    lat    = data["latency_ms"]
+    CELLS  = ["GRU", "LSTM", "FastGRNN"]
+    COLOR  = {"GRU": "#4c72b0", "LSTM": "#8c8c8c", "FastGRNN": "#dd8452"}
+    x      = np.arange(len(levels))
+    plateau = levels.index(data["plateau_level"])
+
+    fig, (axA, axB) = plt.subplots(1, 2, figsize=(W2, 2.7))
+
+    # ---- (a) absolute -------------------------------------------------------
+    for cell in CELLS:
+        axA.plot(x, lat["lut"][cell], "-o", color=COLOR[cell], markersize=3.5,
+                 label=f"{cell}, LUT")
+        axA.plot(x, lat["no_lut"][cell], "--s", color=COLOR[cell], markersize=3.5,
+                 markerfacecolor="none", label=f"{cell}, no LUT")
+
+    axA.axhline(20.0, color="#d1615d", linestyle=":", linewidth=0.9)
+    axA.annotate("20 ms budget", xy=(5.35, 20.0), fontsize=6, color="#d1615d",
+                 ha="right", va="bottom")
+
+    # the gap the compiler cannot close, vs the gap it can
+    axA.annotate("", xy=(4.0, lat["no_lut"]["GRU"][4]), xytext=(4.0, lat["lut"]["GRU"][4]),
+                 arrowprops=dict(arrowstyle="<->", lw=0.8, color="#333333"))
+    axA.annotate("activation\nimplementation\n$-37$ to $-46\\%$",
+                 xy=(4.15, 15.7), fontsize=6.2, color="#333333", va="center")
+
+    axA.set_ylim(0, 31)
+    axA.set_ylabel("Latency per recurrent step (ms)")
+    axA.set_title("(a)  measured latency", fontsize=8.5)
+    axA.legend(loc="lower left", ncol=2, fontsize=5.8, columnspacing=0.8,
+               handlelength=1.6, handletextpad=0.4)
+
+    # ---- (b) relative to -O off --------------------------------------------
+    for cell in CELLS:
+        for key, style, fill in (("lut", "-o", COLOR[cell]),
+                                 ("no_lut", "--s", "none")):
+            v = np.asarray(lat[key][cell], dtype=float)
+            axB.plot(x, 100.0 * (v / v[0] - 1.0), style, color=COLOR[cell],
+                     markersize=3.5, markerfacecolor=fill)
+
+    axB.axhline(0.0, color="#999999", linewidth=0.8)
+    axB.axvline(plateau, color="#4c9f70", linestyle="--", linewidth=0.9)
+    axB.annotate("plateau at $-$O2\n(deployed: $-$O3)", xy=(plateau + 0.12, 1.1),
+                 fontsize=6.2, color="#4c9f70", va="bottom")
+    axB.annotate("no FPU, no hardware multiplier: every float MAC and\n"
+                 "every $\\mathtt{expf}$/$\\mathtt{tanhf}$ is a precompiled soft-float library call",
+                 xy=(5.3, -12.3), fontsize=6.0, color="#555555",
+                 ha="right", va="bottom")
+    axB.set_ylim(-13, 3)
+    axB.set_ylabel("Change vs. $-$O off (%)")
+    axB.set_title("(b)  what the compiler actually buys", fontsize=8.5)
+
+    for ax in (axA, axB):
+        ax.set_xticks(x)
+        ax.set_xticklabels([f"$-$O{l}" if l != "off" else "$-$O off"
+                            for l in levels], fontsize=6.5)
+        ax.set_xlabel("CCS optimization level")
+        ax.set_xlim(-0.35, 5.35)
+        ax.grid(axis="x", visible=False)
+
+    fig.subplots_adjust(wspace=0.30)
+    save(fig, "opt_insensitivity.pdf")
+
+
+# ----------------------------------------------------------------------------
 # 7. Warm-up curve (h_state[0] + emitted class over single window)
 # ----------------------------------------------------------------------------
 def fig_warmup_curve() -> None:
@@ -525,6 +600,7 @@ def main() -> None:
     fig_warmup_curve()
     fig_realtime_budget()
     fig_ranking_flip()
+    fig_opt_insensitivity()
     print("Done.")
 
 
