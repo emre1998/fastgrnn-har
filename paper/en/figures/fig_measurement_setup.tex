@@ -1,5 +1,5 @@
-% ============================================================================
-% fig_measurement_setup.tex — Measurement rig schematic (two configurations)
+﻿% ============================================================================
+% fig_measurement_setup.tex â€” Measurement rig schematic (two configurations)
 %
 % Requires in preamble:
 %   \usepackage{tikz}
@@ -33,9 +33,9 @@
 
 % =====================  PANEL (a): BENCH  =====================
 \begin{scope}
-  \node[blk] (src)  at (0,0)     {3.3\,V rail\\[-1pt]\scriptsize(LaunchPad)};
-  \node[blk] (ina)  at (4.0,0)   {INA226\\[-1pt]\scriptsize $R_{\mathrm{sh}}=0.1\,\Omega$};
-  \node[blk] (mcu)  at (8.4,0)   {MSP430G2553\\[-1pt]\scriptsize DUT (16\,MHz)};
+  \node[blk] (src)  at (0,0)     {eZ-FET 3V3\\[-1pt]\scriptsize source};
+  \node[blk] (ina)  at (4.0,0)   {INA226\\[-1pt]\scriptsize $R_{\mathrm{sh}}=0.1\,\Omega$\\[-2pt]\scriptsize VBS\,$\to$\,IN$-$};
+  \node[blk] (mcu)  at (8.4,0)   {MSP430G2553\\[-1pt]\scriptsize target VCC, 16\,MHz};
   \node[blk] (ard)  at (4.0,-2.1){Arduino Uno\\[-1pt]\scriptsize INA226 reader};
   \node[blk] (pc)   at (8.4,-2.1){Host PC};
 
@@ -45,7 +45,7 @@
                       node[note,below=1pt]{measured rail} (mcu);
 
   % INA226 read-out + host links
-  \draw[bus] (ina) -- node[lbl,right]{I\textsuperscript{2}C} (ard);
+  \draw[bus] (ina) -- node[lbl,align=left,right=2pt]{I\textsuperscript{2}C (A4/A5)\\+ VCC 5\,V} (ard);
   \draw[ser] (ard) -- node[lbl,above]{CSV, 115.2\,kBd} (pc);
   \draw[ser] (mcu) -- node[lbl,right]{UART, 9.6\,kBd} (pc);
 
@@ -60,14 +60,14 @@
   \node[note, anchor=west] at (8.4,1.25) {latency timed in firmware};
   \draw[gray,-{Latex[length=1.6mm]}] (8.9,1.12) -- (8.6,0.55);
 
-  \node[pcap] at (4.2,-4.15) {\textbf{(a)} Bench configuration --- embedded test data, no sensor};
+  \node[pcap] at (4.2,-4.15) {\textbf{(a)} Bench, MCU-only (\texttt{TEST\_MODE\,3}) --- embedded data, \emph{sensor not connected}};
 \end{scope}
 
 % =====================  PANEL (b): SENSOR IN THE LOOP  =====================
 \begin{scope}[yshift=-6.6cm]
-  \node[blk] (src2) at (0,0)     {3.3\,V rail\\[-1pt]\scriptsize(LaunchPad)};
-  \node[blk] (ina2) at (4.0,0)   {INA226\\[-1pt]\scriptsize $R_{\mathrm{sh}}=0.1\,\Omega$};
-  \node[blk] (mcu2) at (8.4,0)   {MSP430G2553\\[-1pt]\scriptsize DUT (16\,MHz)};
+  \node[blk] (src2) at (0,0)     {eZ-FET 3V3\\[-1pt]\scriptsize source};
+  \node[blk] (ina2) at (4.0,0)   {INA226\\[-1pt]\scriptsize $R_{\mathrm{sh}}=0.1\,\Omega$\\[-2pt]\scriptsize VBS\,$\to$\,IN$-$};
+  \node[blk] (mcu2) at (8.4,0)   {MSP430G2553\\[-1pt]\scriptsize target VCC, 16\,MHz};
   \node[blk] (ard2) at (4.0,-2.1){Arduino Uno\\[-1pt]\scriptsize INA226 reader};
   \node[blk] (mpu)  at (8.4,-2.1){MPU6050\\[-1pt]\scriptsize accelerometer};
 
@@ -83,7 +83,7 @@
   \draw[bus] (mcu2) -- node[lbl,align=left,right=2pt]{I\textsuperscript{2}C\\P1.6\,/\,P1.7} (mpu);
 
   % INA226 read-out
-  \draw[bus] (ina2) -- node[lbl,right]{I\textsuperscript{2}C} (ard2);
+  \draw[bus] (ina2) -- node[lbl,align=left,right=2pt]{I\textsuperscript{2}C (A4/A5)\\+ VCC 5\,V} (ard2);
 
   % common ground
   \draw[gnd] (-1.4,-3.3) -- (9.8,-3.3);
@@ -91,7 +91,7 @@
   \node[lbl,gray!70] at (-1.4,-3.55) {GND};
   \node[lbl,gray!70,anchor=west] at (9.75,-2.1) {AD0$\to$GND\;(0x68)};
 
-  \node[pcap] at (4.2,-4.15) {\textbf{(b)} Sensor-in-the-loop --- MPU6050 read at 50\,Hz over I\textsuperscript{2}C};
+  \node[pcap] at (4.2,-4.15) {\textbf{(b)} Sensor-in-the-loop --- identical wiring for\\[-2pt]\texttt{TEST\_MODE\,4} (latency) and \texttt{TEST\_MODE\,5} (energy)};
 \end{scope}
 
 % =====================  LEGEND  =====================
