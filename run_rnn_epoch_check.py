@@ -96,7 +96,7 @@ def run(kind):
     h = fit_hidden(kind)
     m = SmallRNN(kind, h)
     opt = torch.optim.Adam(m.parameters(), lr=args.lr)
-    best, best_state = -1, None
+    best, best_state, best_ep = -1, None, -1
     for ep in range(args.epochs):
         m.train()
         for x, y in train_loader:
@@ -104,15 +104,18 @@ def run(kind):
             nn.utils.clip_grad_norm_(m.parameters(), 5.0); opt.step()
         vf1 = macro_f1(m, val_loader)
         if vf1 > best:
-            best, best_state = vf1, copy.deepcopy(m.state_dict())
+            best, best_state, best_ep = vf1, copy.deepcopy(m.state_dict()), ep + 1
     m.load_state_dict(best_state)
     fp32 = macro_f1(m, test_loader)
     with torch.no_grad():
         for p in list(m.rnn.parameters()) + list(m.classifier.parameters()):
             p.data.copy_(q15_round(p.data)[0])
     q15 = macro_f1(m, test_loader)
+    # best_epoch is the convergence evidence: if it lands well before args.epochs
+    # the baseline had saturated, and "your baseline was undertrained" is answered.
     return {"hidden": int(h), "fp32_f1": float(fp32), "q15_f1": float(q15),
-            "total_nonzero": int(total_params(kind, h))}
+            "total_nonzero": int(total_params(kind, h)),
+            "best_epoch": int(best_ep), "best_val_f1": float(best)}
 
 
 out = f"experiments/deploy_rnn{args.epochs}_{TAG}_s{args.seed}.json"
@@ -122,6 +125,7 @@ else:
     res = {"dataset": TAG, "seed": args.seed, "epochs": args.epochs, "budget": BUDGET}
     for kind in ("gru", "lstm"):
         res[kind] = run(kind)
-        print(f"  {kind} H{res[kind]['hidden']} FP32={res[kind]['fp32_f1']:.3f} Q15={res[kind]['q15_f1']:.3f}")
+        print(f"  {kind} H{res[kind]['hidden']} FP32={res[kind]['fp32_f1']:.3f} "
+              f"Q15={res[kind]['q15_f1']:.3f} best_epoch={res[kind]['best_epoch']}/{args.epochs}")
     json.dump(res, open(out, "w"), indent=2)
     print(f"Saved {out}")
