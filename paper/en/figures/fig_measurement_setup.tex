@@ -1,0 +1,105 @@
+% ============================================================================
+% fig_measurement_setup.tex — Measurement rig schematic (two configurations)
+%
+% Requires in preamble:
+%   \usepackage{tikz}
+%   \usetikzlibrary{positioning,arrows.meta,calc}
+%
+% Usage in the paper:
+%   \begin{figure}[t]
+%     \centering
+%     \input{figures/fig_measurement_setup}
+%     \caption{Measurement setup. (a) Bench configuration: inference runs on
+%       embedded test data with no sensor attached. (b) Sensor-in-the-loop
+%       configuration: the MPU6050 is powered from the shunt-side rail, so its
+%       current is included in the measured system power. In both cases the
+%       INA226 measures the full supply current of the device under test, while
+%       latency is timed inside the firmware (Timer\_A) and reported over UART.}
+%     \label{fig:setup}
+%   \end{figure}
+% ============================================================================
+
+\begin{tikzpicture}[
+  blk/.style   = {draw, thick, rounded corners=2pt, align=center,
+                  font=\small, minimum height=10mm, minimum width=24mm},
+  pwr/.style   = {very thick, -{Latex[length=2.2mm]}},
+  bus/.style   = {thick, dashed, -{Latex[length=2.2mm]}},
+  ser/.style   = {thick, dotted, -{Latex[length=2.2mm]}},
+  gnd/.style   = {semithick, gray!70},
+  lbl/.style   = {font=\scriptsize, inner sep=1.5pt},
+  note/.style  = {font=\scriptsize\itshape, inner sep=2pt},
+  pcap/.style  = {font=\small, align=center},
+]
+
+% =====================  PANEL (a): BENCH  =====================
+\begin{scope}
+  \node[blk] (src)  at (0,0)     {3.3\,V rail\\[-1pt]\scriptsize(LaunchPad)};
+  \node[blk] (ina)  at (4.0,0)   {INA226\\[-1pt]\scriptsize $R_{\mathrm{sh}}=0.1\,\Omega$};
+  \node[blk] (mcu)  at (8.4,0)   {MSP430G2553\\[-1pt]\scriptsize DUT (16\,MHz)};
+  \node[blk] (ard)  at (4.0,-2.1){Arduino Uno\\[-1pt]\scriptsize INA226 reader};
+  \node[blk] (pc)   at (8.4,-2.1){Host PC};
+
+  % power path
+  \draw[pwr] (src) -- node[lbl,above]{IN$+$} (ina);
+  \draw[pwr] (ina) -- node[lbl,above]{IN$-$}
+                      node[note,below=1pt]{measured rail} (mcu);
+
+  % INA226 read-out + host links
+  \draw[bus] (ina) -- node[lbl,right]{I\textsuperscript{2}C} (ard);
+  \draw[ser] (ard) -- node[lbl,above]{CSV, 115.2\,kBd} (pc);
+  \draw[ser] (mcu) -- node[lbl,right]{UART, 9.6\,kBd} (pc);
+
+  % common ground
+  \draw[gnd] (-1.4,-3.3) -- (9.8,-3.3);
+  \foreach \n in {src,ina,mcu,ard} { \draw[gnd] (\n.south) -- (\n.south |- 0,-3.3); }
+  \node[lbl,gray!70] at (-1.4,-3.55) {GND};
+
+  % measurement annotations
+  \node[note, anchor=west] at (4.9,0.95) {system power $P=V\!\cdot\!I$ measured here};
+  \draw[gray,-{Latex[length=1.6mm]}] (4.9,0.85) -- (4.15,0.32);
+  \node[note, anchor=west] at (8.4,1.25) {latency timed in firmware};
+  \draw[gray,-{Latex[length=1.6mm]}] (8.9,1.12) -- (8.6,0.55);
+
+  \node[pcap] at (4.2,-4.15) {\textbf{(a)} Bench configuration --- embedded test data, no sensor};
+\end{scope}
+
+% =====================  PANEL (b): SENSOR IN THE LOOP  =====================
+\begin{scope}[yshift=-6.6cm]
+  \node[blk] (src2) at (0,0)     {3.3\,V rail\\[-1pt]\scriptsize(LaunchPad)};
+  \node[blk] (ina2) at (4.0,0)   {INA226\\[-1pt]\scriptsize $R_{\mathrm{sh}}=0.1\,\Omega$};
+  \node[blk] (mcu2) at (8.4,0)   {MSP430G2553\\[-1pt]\scriptsize DUT (16\,MHz)};
+  \node[blk] (ard2) at (4.0,-2.1){Arduino Uno\\[-1pt]\scriptsize INA226 reader};
+  \node[blk] (mpu)  at (8.4,-2.1){MPU6050\\[-1pt]\scriptsize accelerometer};
+
+  % power path
+  \draw[pwr] (src2) -- node[lbl,above]{IN$+$} (ina2);
+  \draw[pwr] (ina2) -- node[lbl,above]{IN$-$}
+                       node[note,below=1pt]{measured rail} (mcu2);
+
+  % sensor powered FROM the measured rail (key methodological point)
+  \draw[pwr] (6.2,0) |- node[lbl,pos=0.72,above]{$V_{\mathrm{CC}}$} (mpu.west);
+
+  % sensor I2C to the MCU
+  \draw[bus] (mcu2) -- node[lbl,align=left,right=2pt]{I\textsuperscript{2}C\\P1.6\,/\,P1.7} (mpu);
+
+  % INA226 read-out
+  \draw[bus] (ina2) -- node[lbl,right]{I\textsuperscript{2}C} (ard2);
+
+  % common ground
+  \draw[gnd] (-1.4,-3.3) -- (9.8,-3.3);
+  \foreach \n in {src2,ina2,mcu2,ard2,mpu} { \draw[gnd] (\n.south) -- (\n.south |- 0,-3.3); }
+  \node[lbl,gray!70] at (-1.4,-3.55) {GND};
+  \node[lbl,gray!70,anchor=west] at (9.75,-2.1) {AD0$\to$GND\;(0x68)};
+
+  \node[pcap] at (4.2,-4.15) {\textbf{(b)} Sensor-in-the-loop --- MPU6050 read at 50\,Hz over I\textsuperscript{2}C};
+\end{scope}
+
+% =====================  LEGEND  =====================
+\begin{scope}[yshift=-11.6cm, xshift=0.2cm]
+  \draw[pwr] (0,0)   -- (0.9,0);  \node[lbl,anchor=west] at (1.0,0)   {power / measured rail};
+  \draw[bus] (4.2,0) -- (5.1,0);  \node[lbl,anchor=west] at (5.2,0)   {I\textsuperscript{2}C bus};
+  \draw[ser] (7.6,0) -- (8.5,0);  \node[lbl,anchor=west] at (8.6,0)   {serial to host};
+  \draw[gnd] (0,-0.45) -- (0.9,-0.45); \node[lbl,anchor=west] at (1.0,-0.45) {common ground};
+\end{scope}
+
+\end{tikzpicture}
