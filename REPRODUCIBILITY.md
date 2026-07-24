@@ -52,7 +52,43 @@ deliberate experiment) and stamps torch version, thread count, platform and git
 commit into every result JSON. Wired into the six scripts that produce paper
 numbers.
 
+## The device is also unrecorded, and it explains more than the thread count
+
+Thread count was the first unrecorded variable found; it is not the only one.
+
+| script | device | reproduces? |
+|---|---|---|
+| `run_deploy_budget.py` | `torch.device("cpu")`, fixed | **yes, bit-exact** |
+| `run_rnn_epoch_check.py` | no device code, so CPU | **yes, bit-exact** |
+| `run_baseline_tier1.py` | `cuda` if available | no |
+| `run_baseline_tier2.py` | `cuda` if available | no |
+| `run_baseline_tier2_pruned.py` | `cuda` if available | no |
+| `run_pareto_sweep.py` | `cuda` if available | not tested |
+
+The correlation is exact: every script pinned to CPU reproduces, and every script
+that takes the GPU when one is present does not — because the audit forced CPU with
+`CUDA_VISIBLE_DEVICES=-1`. The machine has an RTX 3060, so those runs originally
+used it.
+
+GPU and CPU differ by more than reduction order. On this machine
+`torch.backends.cudnn.allow_tf32` is **true**, which is the PyTorch default, and
+GRU/LSTM go through cuDNN — so the original runs computed in TF32, a 10-bit
+mantissa against FP32's 23.
+
+**This retracts a conclusion recorded earlier in this file.** The pruned route was
+described as an unstable procedure on the evidence that it never reproduced. It ran
+on the GPU; the re-runs ran on the CPU. Instability and device difference are not
+distinguishable from that comparison, and the same applies to the equal-byte margin
+change reported from the five-seed re-run. A single-configuration test on the GPU is
+pending.
+
+What does survive: PAMAP2 fails to reproduce inside `run_deploy_budget.py`, which is
+CPU-fixed on both sides, so its cause is not the device.
+
 ## Two genuine instabilities
+
+*(Superseded in part — see the section above. Retained because the LSTM-pruned
+spread is real regardless of which device produced it.)*
 
 Neither is environmental. Both are properties of the experiment itself.
 

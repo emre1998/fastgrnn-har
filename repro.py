@@ -75,10 +75,16 @@ def env_stamp() -> dict:
         import torch
         stamp["torch"] = torch.__version__
         stamp["threads_torch"] = torch.get_num_threads()
-        # these scripts train on CPU; record whether a GPU merely happened to be
-        # visible, which is not the same thing as one having been used
-        stamp["device"] = "cpu"
+        # Several scripts select torch.device("cuda" if available else "cpu"), so
+        # the device is not a constant of this repository and must be recorded,
+        # not assumed. GPU and CPU produce different floating-point results, by
+        # more than the thread count does.
         stamp["cuda_available"] = torch.cuda.is_available()
+        stamp["device_would_be"] = "cuda" if torch.cuda.is_available() else "cpu"
+        if torch.cuda.is_available():
+            stamp["gpu"] = torch.cuda.get_device_name(0)
+            stamp["tf32_matmul"] = torch.backends.cuda.matmul.allow_tf32
+            stamp["tf32_cudnn"] = torch.backends.cudnn.allow_tf32
     except ImportError:
         pass
     try:
