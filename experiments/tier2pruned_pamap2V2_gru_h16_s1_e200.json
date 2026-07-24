@@ -1,0 +1,38 @@
+{
+  "model": "gru_pruned",
+  "hidden": 16,
+  "seed": 1,
+  "cell_nonzero": 181,
+  "head": 204,
+  "total_nonzero": 385,
+  "best_epoch": 192,
+  "best_val_f1": 0.4376158274653997,
+  "test_accuracy": 0.4186120882635114,
+  "test_macro_f1": 0.31764694778583885,
+  "q15_macro_f1": 0.31764694778583885,
+  "per_class_f1": {
+    "lying": 0.5103220478943022,
+    "sitting": 0.39325842696629215,
+    "standing": 0.6696165191740413,
+    "walking": 0.08921933085501858,
+    "running": 0.1875,
+    "cycling": 0.8325,
+    "Nordic_walking": 0.09239130434782608,
+    "ascending_stairs": 0.3246753246753247,
+    "descending_stairs": 0.12280701754385964,
+    "vacuum_cleaning": 0.2986111111111111,
+    "ironing": 0.2908622908622909,
+    "rope_jumping": 0.0
+  },
+  "env": {
+    "threads": 1,
+    "python": "3.13.1",
+    "platform": "Windows-11-10.0.26200-SP0",
+    "git_commit": "1bc83ae",
+    "torch": "2.6.0+cu124",
+    "threads_torch": 1,
+    "device": "cpu",
+    "cuda_available": false,
+    "numpy": "2.4.6"
+  }
+}

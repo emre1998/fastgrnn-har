@@ -119,11 +119,40 @@ proof that carries claims C1, C3, C4 and C5.
 Q15 losslessness (C7) is also unaffected: it compares FP32 against Q15 *within a single
 trained model*, so no cross-run comparison is involved.
 
+## Pruned route re-run at 5 seeds, threads pinned
+
+Written to the tag `{ds}V2` so both sets exist side by side; compare with
+`analyze_pruned_v2.py`. The FastGRNN column is unchanged in all three, because that
+route reproduces bit-exactly — so every difference below comes from the baseline
+side of the comparison.
+
+| | GRU pruned, committed | re-run | FastGRNN margin |
+|---|---|---|---|
+| HAPT | 0.9023 ± 0.0263 | 0.9009 ± 0.0278 | $-$0.033 → $-$0.031 |
+| WISDM | 0.7671 ± 0.0111 | 0.7325 ± 0.0267 | **+0.033 → +0.067** |
+| PAMAP2 | 0.3392 ± 0.0262 | 0.3188 ± 0.0223 | +0.090 → +0.090 (shrink is the better route either way) |
+
+HAPT is unchanged and the GRU still wins it. WISDM's margin doubles, and the
+direction is what matters: the published comparison was **too generous to the
+baseline**, not to us.
+
+The earlier characterisation of "the pruned route is unstable" needs narrowing.
+GRU with pruning is stable — 0.0015 across five seeds on HAPT. What is unstable is
+LSTM with pruning: +0.064 on HAPT, $-$0.058 on WISDM, +0.073 on PAMAP2, with
+standard deviations up to 0.17. The LSTM is not the winning cell anywhere, so this
+does not reach the headline claims, but it does mean LSTM-pruned figures should
+carry their spread rather than a bare mean.
+
+Still open: which set becomes canonical. The re-run is the only one produced under
+a documented configuration, which argues for it — but that decision replaces
+published numbers and is not one to make silently.
+
 ## Open items
 
-- [ ] Pin thread count in run scripts; stamp environment into result JSONs.
-- [ ] Re-run the pruned route at 5 seeds with threads pinned, or report both routes
-      separately instead of best-of.
+- [x] Pin thread count in run scripts; stamp environment into result JSONs.
+- [x] Re-run the pruned route at 5 seeds with threads pinned.
+- [ ] Decide whether the re-run replaces the committed pruned numbers; if so,
+      regenerate `best_route_summary.json` and the ranking figure.
 - [ ] Decide the PAMAP2 framing: demote to "reported, not ranked".
 - [ ] If PAMAP2 is demoted, the equal-byte record becomes HAPT to the GRU and WISDM to
       FastGRNN. The ranking-reversal finding still holds on WISDM, where both sides of
