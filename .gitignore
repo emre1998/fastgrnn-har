@@ -7,15 +7,18 @@ venv/
 .pytest_cache/
 .ipynb_checkpoints/
 
-# Data — too large for git, instructions in README
-data/
+# Data — too large for git, rebuilt by download_*.py + build_*.py.
+# The manifest is tracked so that a rebuild can be verified: see verify_data.py.
+data/*
+!data/processed_manifest.json
 *.npz
 *.npy
 
-# Trained checkpoints — too large; release a single deployed weights file
-# via GitHub Release instead.
-*.pt
-*.pth
+# Trained checkpoints ARE tracked. They were excluded here as "too large", but
+# all 39 of them come to 297 KB against a 29.7 MB repository -- and repo results
+# load them (ptq_full_eval.py, compute_agreement.py, build_deploy_firmware.py),
+# so without them a clone cannot regenerate ptq_full_multiseed.json,
+# agreement_5seed.json, or the deployed model_weights.h.
 
 # LaTeX build artifacts (keep .tex, .bib, figures/*.pdf, and main.pdf)
 paper/**/*.aux
@@ -61,4 +64,5 @@ contract.md
 arduino/*/host_main.cpp
 arduino/*/host_test.exe
 arduino/*/test_data.h
-deploy_*_hapt_s*.pt
+# deploy_*_hapt_s*.pt is NOT an artifact: build_deploy_firmware.py loads it
+# instead of retraining, so it is the provenance of the flashed weights.
