@@ -9,8 +9,8 @@ so the repo can be re-run end to end (task D0).
 | **F1** | `en/figures/fig_measurement_setup.tex` | methodology | hand-drawn TikZ, netlist-verified | ✅ done |
 | **F2** | `en/figures/realtime_budget.pdf` | C1, C3, C4 | `experiments/sensor_in_loop_matrix.json` | ✅ done |
 | **F3** | `en/figures/ranking_flip.pdf` | C2, C10 | `baseline_*_h16_s*_e120.json` + `best_route_summary.json` | ✅ done |
-| F4 | 50 Hz pipeline / timing diagram | C1 | TikZ | todo |
-| F5 | hardware photograph, labelled | methodology | author photo (matches F1) | todo |
+| **F4** | `en/figures/fig_pipeline_timing.tex` | C1, C3, C4 | TikZ, numbers from `sensor_in_loop_matrix.json` | ✅ done |
+| F5 | hardware photograph | methodology | `photos/hardware_setup/` (already in repo) | repo documentation, not a paper figure — F1 shows the wiring more clearly |
 | **F6** | `en/figures/opt_insensitivity.pdf` | C5 | `experiments/opt_level_sweep.json` | ✅ done |
 | **F7** | `en/figures/pareto_bytes.pdf` | C2, C10 | `pareto_summary.json` + `baseline_*_h16_s*_e120.json` | ✅ done |
 
@@ -146,4 +146,31 @@ is built to avoid; see `run_deploy_budget.py:182`.
   a longer training schedule, and on HAPT the LSTM budget point is the same dense $H{=}5$ model
   gaining $+0.071$ F1 from the extra epochs alone, which on this frontier would be misread as a
   compression gain.}
+```
+
+## F4 — The 50 Hz pipeline in time
+
+Where F2 compares totals as bars, this shows *when* the time is spent inside one
+sampling period, and what a miss actually does. Panel (a) puts the passing and the
+failing configuration on the same axis across two consecutive periods, so the
+overrun is visible as the second period starting late rather than as a number
+exceeding a threshold. Panel (b) zooms out to the window and carries the streaming
+argument: 768 B of window against 512 B of SRAM is why the samples are consumed
+one at a time and never stored.
+
+The 0.8 ms sensor block at 100 kHz is drawn to scale and is therefore almost
+invisible; it is called out rather than widened, because widening it would
+misrepresent exactly the quantity the figure is about.
+
+```latex
+\caption{The 50\,Hz pipeline in time, GRU with LUT activations. (a) Within one
+  20\,ms period the MPU6050 is read, one recurrent step runs, and the processor
+  waits. At 100\,kHz the read costs 0.8\,ms and 8\,ms of the period is left idle,
+  so the next period starts on time. At 10\,kHz the same read costs 8.4\,ms, the
+  period closes 0.43\,ms late, and because nothing recovers that time the lag
+  accumulates across samples --- 229 of 512 samples overran. (b) Samples
+  accumulate into a 2.56\,s window before a class is emitted, but the window is
+  never held in memory: at $128\times3$ int16 values it would need 768\,B against
+  the 512\,B of SRAM on this part. Only the hidden state and the current sample
+  persist, about 66\,B, which is what makes the model fit at all.}
 ```

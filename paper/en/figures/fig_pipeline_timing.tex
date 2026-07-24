@@ -1,0 +1,111 @@
+% ============================================================================
+% fig_pipeline_timing.tex — 50 Hz streaming pipeline: per-sample budget and the
+% window it accumulates into.
+%
+% Requires in preamble:
+%   \usepackage{tikz}
+%   \usetikzlibrary{positioning,arrows.meta,calc,patterns}
+%
+% Usage in the paper:
+%   \begin{figure}[t]
+%     \centering
+%     \input{figures/fig_pipeline_timing}
+%     \caption{...}
+%     \label{fig:pipeline}
+%   \end{figure}
+%
+% Numbers: GRU with LUT activations, experiments/sensor_in_loop_matrix.json.
+% ============================================================================
+
+\begin{tikzpicture}[
+  x=2.6mm, y=1mm,
+  sens/.style  = {draw=black!55, fill=black!28, thick},
+  infOK/.style = {draw=black!55, fill=green!45!black!55, thick},
+  infNO/.style = {draw=black!55, fill=red!55!black!60, thick},
+  slack/.style = {draw=black!35, fill=white, thick, dashed},
+  dl/.style    = {red!55!black, dashed, thick},
+  lbl/.style   = {font=\scriptsize},
+  tny/.style   = {font=\tiny},
+  pcap/.style  = {font=\small},
+]
+
+% ============ PANEL (a): per-sample budget, pass vs miss ====================
+\def\barh{5}
+
+% ---------- passing row: LUT + 100 kHz -------------------------------------
+\def\ya{0}
+\node[lbl, anchor=east] at (-1.2, \ya+\barh/2) {100\,kHz};
+\fill[sens]  (0,\ya)      rectangle (0.8,\ya+\barh);
+\fill[infOK] (0.8,\ya)    rectangle (12.01,\ya+\barh);
+\draw[slack] (12.01,\ya)  rectangle (20,\ya+\barh);
+\node[tny, white] at (6.4,\ya+\barh/2) {inference 12.0\,ms};
+\node[tny] at (16,\ya+\barh/2) {slack 8.0\,ms};
+% the sensor block here is 0.8 ms wide and would otherwise read as a border
+\draw[black!55, thin] (0.4,\ya+\barh) -- (2.6,\ya+\barh+3.0);
+\node[tny, anchor=west] at (2.4,\ya+\barh+3.2) {0.8\,ms};
+
+% second period starts on time
+\fill[sens]  (20,\ya)     rectangle (20.8,\ya+\barh);
+\fill[infOK] (20.8,\ya)   rectangle (32.01,\ya+\barh);
+\draw[slack] (32.01,\ya)  rectangle (40,\ya+\barh);
+\node[tny, white] at (26.4,\ya+\barh/2) {inference};
+
+% ---------- missing row: LUT + 10 kHz --------------------------------------
+\def\yb{-11}
+\node[lbl, anchor=east] at (-1.2, \yb+\barh/2) {10\,kHz};
+\fill[sens]  (0,\yb)      rectangle (8.41,\yb+\barh);
+\fill[infNO] (8.41,\yb)   rectangle (20.43,\yb+\barh);
+\node[tny, white] at (4.2,\yb+\barh/2) {sensor 8.4\,ms};
+\node[tny, white] at (14.4,\yb+\barh/2) {inference 12.0\,ms};
+
+% the next period has already begun: everything after it runs late
+\fill[sens]  (20.43,\yb)  rectangle (28.84,\yb+\barh);
+\fill[infNO] (28.84,\yb)  rectangle (40.86,\yb+\barh);
+\node[tny, white] at (34,\yb+\barh/2) {\ldots and later still};
+
+\draw[-{Latex[length=1.6mm]}, thick] (20,\yb-2.6) -- (20.43,\yb-2.6);
+\node[tny, anchor=west] at (20.6,\yb-2.6) {0.43\,ms late, and the lag accumulates};
+
+% ---------- period boundaries + axis ---------------------------------------
+\foreach \t in {0,20,40}{
+  \draw[dl] (\t,\yb-1) -- (\t,\ya+\barh+6.2);
+  \node[tny, anchor=south] at (\t,\ya+\barh+6.4) {\t\,ms};
+}
+\node[lbl, anchor=south] at (20,\ya+\barh+9.4)
+      {\textcolor{red!55!black}{20\,ms sampling period (50\,Hz)}};
+
+\node[pcap] at (20,\yb-8) {\textbf{(a)} One sample period. Sensor read, then one
+      recurrent step, then wait.};
+
+% ============ PANEL (b): the window these samples accumulate into ==========
+\begin{scope}[yshift=-33mm]
+  \def\wl{36}
+  \node[tny, anchor=south] at (\wl/2,\barh+1.2)
+        {128 samples $\times$ 20\,ms = 2.56\,s per window};
+  \draw[thick] (0,0) rectangle (\wl,\barh);
+  % sample ticks, suggesting the 128 steps without drawing them all
+  \foreach \i in {1,2,...,35}{ \draw[black!22] (\i,0) -- (\i,\barh); }
+  \foreach \i in {0,\wl}{ \draw[thick] (\i,0) -- (\i,\barh); }
+
+  \draw[-{Latex[length=2mm]}, thick] (\wl,\barh/2) -- (\wl+3,\barh/2);
+  \node[lbl, anchor=west] at (\wl+3.2,\barh/2) {class};
+
+  % what is and is not held in memory
+  \node[tny, anchor=west, align=left] at (0,-5)
+    {carried between samples: hidden state $h_t$ and one input, $\approx$66\,B};
+  \node[tny, anchor=west, align=left] at (0,-9.5)
+    {never stored: the window itself, $128\times3\times2 =$ 768\,B $>$ 512\,B of SRAM};
+
+  \node[pcap] at (\wl/2,-16) {\textbf{(b)} Streaming is not an optimisation here ---
+        the window does not fit.};
+\end{scope}
+
+% ============ legend =======================================================
+\begin{scope}[yshift=-62mm]
+  \fill[sens]  (0,0)  rectangle (2,\barh);  \node[tny,anchor=west] at (2.6,\barh/2) {sensor (I\textsuperscript{2}C)};
+  \fill[infOK] (13,0) rectangle (15,\barh); \node[tny,anchor=west] at (15.6,\barh/2) {inference, deadline met};
+  \fill[infNO] (28,0) rectangle (30,\barh); \node[tny,anchor=west] at (30.6,\barh/2) {deadline missed};
+  \draw[slack] (43,0) rectangle (45,\barh); \node[tny,anchor=west] at (45.6,\barh/2) {idle};
+\end{scope}
+
+\end{tikzpicture}
