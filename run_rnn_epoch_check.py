@@ -24,6 +24,9 @@ from sklearn.metrics import f1_score
 from pathlib import Path
 from quantize import q15_round
 
+import repro
+repro.pin_threads()      # thread count changes results -- see REPRODUCIBILITY.md
+
 parser = argparse.ArgumentParser()
 parser.add_argument("--data", default="data/processed/hapt_windows.npz")
 parser.add_argument("--tag", default=None)
@@ -122,7 +125,8 @@ out = f"experiments/deploy_rnn{args.epochs}_{TAG}_s{args.seed}.json"
 if Path(out).exists():
     print(f"SKIP {out}")
 else:
-    res = {"dataset": TAG, "seed": args.seed, "epochs": args.epochs, "budget": BUDGET}
+    res = {"dataset": TAG, "seed": args.seed, "epochs": args.epochs,
+           "budget": BUDGET, "env": repro.env_stamp()}
     for kind in ("gru", "lstm"):
         res[kind] = run(kind)
         print(f"  {kind} H{res[kind]['hidden']} FP32={res[kind]['fp32_f1']:.3f} "

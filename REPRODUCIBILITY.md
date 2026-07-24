@@ -25,8 +25,31 @@ An earlier probe that appeared to show non-reproducibility (HAPT GRU 0.9094 -> 0
 was itself the artifact: it ran with the default multi-threaded BLAS. The committed
 numbers were correct; the probe was not.
 
-**Action:** pin `torch.set_num_threads(1)` in the run scripts and record the thread
-count, torch version, device and commit in every result JSON.
+### Direct evidence
+
+Four epochs of a GRU(H=16) on real HAPT windows, same seed, hashing the resulting
+weights:
+
+| run | threads | weight hash | weight sum |
+|---|---|---|---|
+| `OMP_NUM_THREADS=1` (how the committed results were produced) | 1 | `5f71d1d4…` | 1.5558724403 |
+| `repro.pin_threads()` | 1 | `5f71d1d4…` | 1.5558724403 |
+| unpinned | 8 | `7bfd1349…` | 1.5558724403 |
+
+Two things follow. `pin_threads()` is bit-equivalent to the environment-variable
+route, so pinning cannot shift results away from what is committed. And the
+unpinned run genuinely produces different weights, which makes the cause direct
+evidence rather than inference.
+
+Note the third column: the weight *sum* is identical in all three runs. After four
+epochs the difference lives below the precision of any summary statistic and only
+appears under bitwise comparison — which is why it went unnoticed while compounding
+over 200 epochs.
+
+**Done:** `repro.py` pins the count (override with `FASTGRNN_THREADS=n` for a
+deliberate experiment) and stamps torch version, thread count, platform and git
+commit into every result JSON. Wired into the six scripts that produce paper
+numbers.
 
 ## Two genuine instabilities
 

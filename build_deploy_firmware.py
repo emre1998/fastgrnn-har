@@ -21,6 +21,9 @@ from pathlib import Path
 from torch.utils.data import DataLoader, TensorDataset
 from sklearn.metrics import f1_score
 
+import repro
+repro.pin_threads()      # thread count changes results -- see REPRODUCIBILITY.md
+
 parser = argparse.ArgumentParser()
 parser.add_argument("--cell", choices=["gru", "lstm"], required=True)
 parser.add_argument("--hidden", type=int, required=True)

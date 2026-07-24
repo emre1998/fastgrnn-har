@@ -26,6 +26,9 @@ from sklearn.metrics import f1_score
 from pathlib import Path
 from quantize import q15_round
 
+import repro
+repro.pin_threads()      # thread count changes results -- see REPRODUCIBILITY.md
+
 parser = argparse.ArgumentParser()
 parser.add_argument("--epochs", type=int, default=120)
 parser.add_argument("--ramp_epochs", type=int, default=60)
@@ -184,7 +187,8 @@ def train_one(kind, seed):
          "best_epoch": best_ep, "best_val_f1": float(best_f1),
          "test_accuracy": float(te_acc), "test_macro_f1": float(te_f1),
          "q15_macro_f1": float(q15_f1),
-         "per_class_f1": {n: float(s) for n, s in zip(CLASS_NAMES, per_class)}}
+         "per_class_f1": {n: float(s) for n, s in zip(CLASS_NAMES, per_class)},
+         "env": repro.env_stamp()}
     with open(out, "w") as f:
         json.dump(r, f, indent=2)
     print(f"  [{kind:5s} pruned seed {seed}] F1={te_f1:.4f} Q15={q15_f1:.4f} acc={te_acc:.4f} "

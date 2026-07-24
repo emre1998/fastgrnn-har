@@ -35,6 +35,9 @@ from fastgrnn_model import FastGRNNClassifier
 from quantize import (quantize_weights, calibrate_activations,
                       wrap_cell_with_calibrated_quantization, q15_round)
 
+import repro
+repro.pin_threads()      # thread count changes results -- see REPRODUCIBILITY.md
+
 parser = argparse.ArgumentParser()
 parser.add_argument("--data", default="data/processed/hapt_windows.npz")
 parser.add_argument("--tag", default=None)
@@ -206,7 +209,7 @@ def main():
     if Path(out).exists():
         print(f"SKIP (exists): {out}"); return
     res = {"dataset": TAG, "seed": args.seed, "num_classes": NUM_CLASSES,
-           "head_params": head_params()}
+           "head_params": head_params(), "env": repro.env_stamp()}
     print("  FastGRNN L-S-Q ...")
     res["fastgrnn"] = fastgrnn_lsq()
     budget = res["fastgrnn"]["total_nonzero"]   # byte budget GRU/LSTM must fit (shrink-H)

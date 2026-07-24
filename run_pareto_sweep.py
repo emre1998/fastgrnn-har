@@ -27,6 +27,9 @@ from sklearn.metrics import f1_score
 from pathlib import Path
 from fastgrnn_model import FastGRNNClassifier
 
+import repro
+repro.pin_threads()      # thread count changes results -- see REPRODUCIBILITY.md
+
 parser = argparse.ArgumentParser()
 parser.add_argument("--hiddens", nargs="+", type=int, default=[4, 6, 8, 10, 12])
 parser.add_argument("--models", nargs="+", default=["fastgrnn", "gru", "lstm"])
@@ -120,7 +123,8 @@ def train_one(kind, h, seed):
     model.load_state_dict(best_state)
     te_acc, te_f1 = evaluate(model, test_loader)
     r = {"model": kind, "hidden": h, "seed": seed, "n_params": int(n_params),
-         "best_epoch": best_ep, "test_accuracy": float(te_acc), "test_macro_f1": float(te_f1)}
+         "best_epoch": best_ep, "test_accuracy": float(te_acc), "test_macro_f1": float(te_f1),
+         "env": repro.env_stamp()}
     with open(out, "w") as f:
         json.dump(r, f, indent=2)
     print(f"  [{kind:8s} H{h:<2d} s{seed}] F1={te_f1:.4f} params={n_params} -> {out}")

@@ -24,6 +24,9 @@ from sklearn.metrics import f1_score
 from pathlib import Path
 from fastgrnn_model import FastGRNNClassifier
 
+import repro
+repro.pin_threads()      # thread count changes results -- see REPRODUCIBILITY.md
+
 parser = argparse.ArgumentParser()
 parser.add_argument("--hidden", type=int, default=16)
 parser.add_argument("--epochs", type=int, default=120)
@@ -165,6 +168,7 @@ def train_one(kind, seed, epochs, lr, hidden):
         "best_epoch": best_epoch, "best_val_f1": float(best_val_f1),
         "test_accuracy": float(te_acc), "test_macro_f1": float(te_f1),
         "per_class_f1": {n: float(s) for n, s in zip(CLASS_NAMES, per_class)},
+        "env": repro.env_stamp(),
     }
     with open(out, "w") as f:
         json.dump(result, f, indent=2)
