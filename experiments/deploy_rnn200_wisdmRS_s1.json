@@ -1,0 +1,22 @@
+{
+  "dataset": "wisdmRS",
+  "seed": 1,
+  "epochs": 200,
+  "budget": 283,
+  "gru": {
+    "hidden": 6,
+    "fp32_f1": 0.6936195690426393,
+    "q15_f1": 0.6935515540930383,
+    "total_nonzero": 240,
+    "best_epoch": 194,
+    "best_val_f1": 0.5210316565363188
+  },
+  "lstm": {
+    "hidden": 5,
+    "fp32_f1": 0.6764354953129658,
+    "q15_f1": 0.6763954361421738,
+    "total_nonzero": 236,
+    "best_epoch": 108,
+    "best_val_f1": 0.5195391380160178
+  }
+}

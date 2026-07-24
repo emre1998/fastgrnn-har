@@ -1,0 +1,22 @@
+{
+  "dataset": "pamap2RS",
+  "seed": 1,
+  "epochs": 200,
+  "budget": 385,
+  "gru": {
+    "hidden": 7,
+    "fp32_f1": 0.3240794985276126,
+    "q15_f1": 0.3240794985276126,
+    "total_nonzero": 348,
+    "best_epoch": 188,
+    "best_val_f1": 0.335745091351882
+  },
+  "lstm": {
+    "hidden": 6,
+    "fp32_f1": 0.2357377126229132,
+    "q15_f1": 0.2357377126229132,
+    "total_nonzero": 348,
+    "best_epoch": 190,
+    "best_val_f1": 0.30475427155285134
+  }
+}
