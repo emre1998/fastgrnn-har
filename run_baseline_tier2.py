@@ -26,6 +26,9 @@ from torch.utils.data import DataLoader, TensorDataset
 from sklearn.metrics import f1_score
 from pathlib import Path
 
+import repro
+repro.pin_threads()      # thread count changes results -- see REPRODUCIBILITY.md
+
 parser = argparse.ArgumentParser()
 parser.add_argument("--epochs", type=int, default=120)
 parser.add_argument("--lr", type=float, default=1e-3)
@@ -37,7 +40,7 @@ BUDGET = {"gru": 7, "lstm": 6}
 
 NUM_CLASSES = 6
 CLASS_NAMES = ["WALKING", "UPSTAIRS", "DOWNSTAIRS", "SITTING", "STANDING", "LAYING"]
-DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+DEVICE = repro.device()      # CPU, pinned -- see repro.device.__doc__
 print(f"Device: {DEVICE}")
 
 data = np.load("data/processed/hapt_windows.npz", allow_pickle=True)

@@ -53,6 +53,28 @@ def pin_threads(threads: int | None = None) -> int:
     return n
 
 
+def device():
+    """The device experiments run on.
+
+    CPU, deliberately. Four training scripts used to select
+    `cuda if torch.cuda.is_available() else cpu`, which made the device a
+    property of whichever machine happened to run them: some results came from
+    an RTX 3060 and others from the CPU, and cells being compared against each
+    other were not always trained on the same one.
+
+    CPU also reproduces and the GPU does not. cuDNN's RNN backward pass uses
+    atomics and is non-deterministic by default, and `cudnn.allow_tf32` is on by
+    default, so those kernels compute with a 10-bit mantissa. Re-running an
+    identical GPU configuration does not return the identical number; on CPU
+    with the thread count pinned it does, exactly.
+
+    The models are small enough that CPU is not a real cost, and a reader
+    without a GPU can reproduce everything.
+    """
+    import torch
+    return torch.device(os.environ.get("FASTGRNN_DEVICE", "cpu"))
+
+
 def _git_commit() -> str:
     try:
         out = subprocess.run(["git", "rev-parse", "--short", "HEAD"],
@@ -79,8 +101,8 @@ def env_stamp() -> dict:
         # the device is not a constant of this repository and must be recorded,
         # not assumed. GPU and CPU produce different floating-point results, by
         # more than the thread count does.
+        stamp["device"] = str(device())
         stamp["cuda_available"] = torch.cuda.is_available()
-        stamp["device_would_be"] = "cuda" if torch.cuda.is_available() else "cpu"
         if torch.cuda.is_available():
             stamp["gpu"] = torch.cuda.get_device_name(0)
             stamp["tf32_matmul"] = torch.backends.cuda.matmul.allow_tf32

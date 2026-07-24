@@ -42,7 +42,7 @@ parser.add_argument("--val_holdout", type=int, default=4,
 args = parser.parse_args()
 
 TAG = args.tag or Path(args.data).stem.replace("_windows", "")
-DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+DEVICE = repro.device()      # CPU, pinned -- see repro.device.__doc__
 print(f"Dataset tag: {TAG} | Device: {DEVICE}")
 
 # ----------------------------------------------------------------------------

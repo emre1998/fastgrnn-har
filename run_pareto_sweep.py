@@ -43,7 +43,7 @@ args = parser.parse_args()
 
 TAG = args.tag or Path(args.data).stem.replace("_windows", "")
 PREFIX = "" if TAG == "hapt" else f"{TAG}_"   # keep existing hapt files unprefixed
-DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+DEVICE = repro.device()      # CPU, pinned -- see repro.device.__doc__
 print(f"Dataset tag: {TAG} | Device: {DEVICE}")
 
 data = np.load(args.data, allow_pickle=True)

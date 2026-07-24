@@ -45,7 +45,7 @@ args = parser.parse_args()
 
 TAG = args.tag or Path(args.data).stem.replace("_windows", "")
 CELL_PARAMS = ["weight_ih_l0", "weight_hh_l0", "bias_ih_l0", "bias_hh_l0"]
-DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+DEVICE = repro.device()      # CPU, pinned -- see repro.device.__doc__
 print(f"Dataset tag: {TAG} | Device: {DEVICE}")
 
 data = np.load(args.data, allow_pickle=True)
