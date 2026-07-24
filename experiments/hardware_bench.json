@@ -1,0 +1,69 @@
+{
+  "_source": "B2_RESULTS.md, measured 2026-07-06 (latency, power) and 2026-07-09 (production memory)",
+  "_platform": {
+    "mcu": "MSP430G2553 (MSP-EXP430G2ET)",
+    "clock_mhz": 16,
+    "flash_bytes": 16384,
+    "sram_bytes": 512,
+    "hw_multiplier": false,
+    "fpu": false,
+    "compiler": "TI cl430, -O3, --use_hw_mpy=none"
+  },
+  "_what_was_measured": {
+    "latency": "measured — timed on device over embedded test data, sensor detached (TEST_MODE 1)",
+    "power": "measured — INA226 steady-state on the target supply rail (TEST_MODE 3)",
+    "energy": "derived — measured power x measured latency, not an instrument reading",
+    "memory": "measured — CCS linker summary for the production build (no UART, no debug, no repeat loop)",
+    "weight_bytes": "analytical — nonzero parameters x 2 B in Q15"
+  },
+  "_caveat": "Firmware busy-waits between samples rather than entering a low-power mode, so the energy figures are an upper bound for the active regime.",
+
+  "window_len": 128,
+  "sample_rate_hz": 50,
+  "deadline_ms": 20.0,
+
+  "cells": {
+    "GRU": {
+      "deployed_config": "dense shrink-H, H=6, HAPT seed 0",
+      "hidden": 6,
+      "nonzero_params": 240,
+      "weight_bytes": 480,
+      "deployed_f1": 0.9153,
+      "latency_ms": {"lut": 12.116, "no_lut": 19.273},
+      "power_mw": {"lut": 17.70, "no_lut": 17.70},
+      "energy_mj_per_window": {"lut": 27.5, "no_lut": 43.7},
+      "flash_bytes": 5392,
+      "sram_bytes": 308
+    },
+    "LSTM": {
+      "deployed_config": "dense shrink-H, H=5, HAPT seed 0",
+      "hidden": 5,
+      "nonzero_params": 236,
+      "weight_bytes": 472,
+      "deployed_f1": 0.8176,
+      "latency_ms": {"lut": 12.370, "no_lut": 22.097},
+      "power_mw": {"lut": 17.70, "no_lut": 17.70},
+      "energy_mj_per_window": {"lut": 28.0, "no_lut": 50.1},
+      "flash_bytes": 5742,
+      "sram_bytes": 324
+    },
+    "FastGRNN": {
+      "deployed_config": "low-rank (r_w=2, r_u=8) + 50% IHT sparsity + calibrated Q15, H=16, HAPT seed 0",
+      "hidden": 16,
+      "nonzero_params": 281,
+      "weight_bytes": 562,
+      "deployed_f1": 0.9134,
+      "latency_ms": {"lut": 13.900, "no_lut": 26.100},
+      "power_mw": {"lut": 17.72, "no_lut": 17.66},
+      "energy_mj_per_window": {"lut": 31.5, "no_lut": 58.9},
+      "flash_bytes": 5544,
+      "sram_bytes": 348
+    }
+  },
+
+  "_notes": {
+    "deployed_f1": "GRU and LSTM from the generated model_weights.h headers; FastGRNN from ptq_full_multiseed.json (seed 0, calibrated Q15 weights+activations), matching the checkpoint named in its header.",
+    "power_equality": "The three cells' power readings sit within one INA226 LSB of each other, so power is platform-dominated rather than cell-dependent.",
+    "lstm_no_lut": "22.097 ms exceeds the 20 ms budget: without table-based activations the LSTM cannot meet the deadline even with no sensor attached."
+  }
+}
