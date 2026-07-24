@@ -56,6 +56,16 @@ Release/
 *.bak
 *.log
 
+# Experiment stderr. The .json result files next to these are the record;
+# these only hold progress bars and warnings from the run that produced them.
+experiments/*.err
+_drift_logs/
+_pruned_v2_logs/
+
+# Local working documents and submission bundles
+*.docx
+*.tar.gz
+
 # CCS / Theia debug session noise (workspace lock files, output traces)
 true
 contract.md

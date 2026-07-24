@@ -54,20 +54,63 @@ characterization of the recurrent warm-up latency (median 74 samples / 1.48 s).
 # Install dependencies
 pip install torch numpy matplotlib scikit-learn
 
-# Download and prepare the HAPT dataset
-python download_hapt.py
-python build_dataset.py
+# Download and prepare the three datasets
+python download_hapt.py   && python build_dataset.py
+python download_wisdm.py  && python build_wisdm.py
+python download_pamap2.py && python build_pamap2.py
+
+# Confirm the rebuild matches the data the published results came from
+python verify_data.py
 
 # Train the deployed model (single seed)
 python train_sparse.py --rw 2 --ru 8 --sparsity 0.5 --seed 0
 
 # Cross-check the deployed Q15 inference against PyTorch
-python test_inference_python.py
+python arduino/test_inference_python.py
 # Expect: 100% prediction agreement on 3,399 test windows
 
 # Regenerate paper figures from experiment JSON files
 python paper/scripts/make_figures.py
 ```
+
+**Thread count is pinned to 1.** PyTorch's CPU BLAS changes its reduction order with
+the thread count, which changes floating-point results, which over a few hundred
+epochs changes where training lands. `repro.py` pins it and stamps the environment
+into every result file; override only for a deliberate experiment, never to
+reproduce a published number:
+
+```bash
+FASTGRNN_THREADS=4 python run_baseline_tier1.py ...   # not comparable
+```
+
+See [REPRODUCIBILITY.md](REPRODUCIBILITY.md) for the audit that established this,
+including which results reproduce bit-exactly and which do not.
+
+### Which script produces which result
+
+| Script | Writes | Used by |
+|---|---|---|
+| `run_baseline_tier1.py` | `baseline_{ds}_{cell}_h16_s*_e120.json` | equal-capacity half of the ranking figure; size/accuracy frontier |
+| `run_pareto_sweep.py` | `pareto_*.json`, `pareto_summary.json` | `pareto_bytes.pdf` |
+| `run_deploy_budget.py` | `deploy_{ds}_s*.json` | FastGRNN at the byte budget |
+| `run_rnn_epoch_check.py` | `deploy_rnn200_{ds}_s*.json` | GRU/LSTM shrink-*H* route at 200 epochs |
+| `run_baseline_tier2_pruned.py` | `tier2pruned_{ds}_*.json` | GRU/LSTM pruned-*H*16 route |
+| `analyze_best_route.py` | `best_route_summary.json` | equal-byte half of the ranking figure |
+| `run_multiseed_sweep.py` | `multiseed_summary.json` | `lowrank_seeds.pdf` |
+| `run_sparsity_sweep.py`, `run_sparse_multiseed.py` | `sparse_*.json` | `sparsity_curve.pdf` |
+| `ptq_full_eval.py` | `ptq_full_multiseed.json` | `quant_modes.pdf`; the Q15-losslessness result |
+| `epoch_saturation.py` | `saturation_h16.json` | `saturation.pdf` |
+| `run_lowrank_stage.py`, `analyze_ablation.py` | `ablation_summary.json` | compression ablation |
+| `analyze_footprint.py` | — (prints) | analytical Flash/SRAM budget |
+| `build_deploy_firmware.py` | `arduino/{cell}_har/model_weights.h` | the flashed weights |
+| `verify_firmware.py` | — (checks) | host-side C/PyTorch parity |
+| `paper/scripts/make_figures.py` | `paper/en/figures/*.pdf` | every data figure |
+
+Hardware numbers come from the firmware in `msp/`, not from these scripts:
+`TEST_MODE` selects bench latency (1), bench energy (3), live latency with the
+sensor (4), or live energy (5). Results are collected in
+[B2_RESULTS.md](B2_RESULTS.md); the measurement protocol is in
+[docs/energy_measurement.md](docs/energy_measurement.md).
 
 ### Deploy
 
