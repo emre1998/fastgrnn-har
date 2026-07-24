@@ -1,0 +1,26 @@
+{
+  "model": "lstm",
+  "hidden": 16,
+  "seed": 3,
+  "epochs": 120,
+  "lr": 0.001,
+  "n_params": 1548,
+  "best_epoch": 85,
+  "best_val_f1": 0.5603616165441284,
+  "test_accuracy": 0.36456667732651105,
+  "test_macro_f1": 0.3188533535299646,
+  "per_class_f1": {
+    "lying": 0.50997150997151,
+    "sitting": 0.2564102564102564,
+    "standing": 0.5,
+    "walking": 0.32978723404255317,
+    "running": 0.13333333333333333,
+    "cycling": 0.6350710900473934,
+    "Nordic_walking": 0.5140562248995983,
+    "ascending_stairs": 0.20346320346320346,
+    "descending_stairs": 0.021101992966002344,
+    "vacuum_cleaning": 0.3480453972257251,
+    "ironing": 0.375,
+    "rope_jumping": 0.0
+  }
+}

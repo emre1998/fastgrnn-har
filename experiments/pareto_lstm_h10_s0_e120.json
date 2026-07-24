@@ -1,0 +1,9 @@
+{
+  "model": "lstm",
+  "hidden": 10,
+  "seed": 0,
+  "n_params": 666,
+  "best_epoch": 120,
+  "test_accuracy": 0.7990585466313621,
+  "test_macro_f1": 0.7721495575145095
+}

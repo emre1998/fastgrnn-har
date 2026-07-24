@@ -1,0 +1,114 @@
+{
+  "fastgrnn_h8": {
+    "model": "fastgrnn",
+    "hidden": 8,
+    "n_params": 160,
+    "mean_f1": 0.8169138139863126,
+    "std_f1": 0.02976974381177507,
+    "n_seeds": 5
+  },
+  "fastgrnn_h12": {
+    "model": "fastgrnn",
+    "hidden": 12,
+    "n_params": 284,
+    "mean_f1": 0.8073635082861543,
+    "std_f1": 0.02118537323365651,
+    "n_seeds": 5
+  },
+  "gru_h4": {
+    "model": "gru",
+    "hidden": 4,
+    "n_params": 138,
+    "mean_f1": 0.7911272380407486,
+    "std_f1": 0.054012654750867764,
+    "n_seeds": 5
+  },
+  "gru_h5": {
+    "model": "gru",
+    "hidden": 5,
+    "n_params": 186,
+    "mean_f1": 0.848064383868398,
+    "std_f1": 0.02652653711418741,
+    "n_seeds": 5
+  },
+  "gru_h6": {
+    "model": "gru",
+    "hidden": 6,
+    "n_params": 240,
+    "mean_f1": 0.8689299490141089,
+    "std_f1": 0.038793124603594784,
+    "n_seeds": 5
+  },
+  "gru_h8": {
+    "model": "gru",
+    "hidden": 8,
+    "n_params": 366,
+    "mean_f1": 0.8987277997712185,
+    "std_f1": 0.030951826364056204,
+    "n_seeds": 5
+  },
+  "gru_h10": {
+    "model": "gru",
+    "hidden": 10,
+    "n_params": 516,
+    "mean_f1": 0.9045570588526921,
+    "std_f1": 0.01588698099003691,
+    "n_seeds": 5
+  },
+  "gru_h12": {
+    "model": "gru",
+    "hidden": 12,
+    "n_params": 690,
+    "mean_f1": 0.9122641266513515,
+    "std_f1": 0.013278310313633091,
+    "n_seeds": 5
+  },
+  "lstm_h4": {
+    "model": "lstm",
+    "hidden": 4,
+    "n_params": 174,
+    "mean_f1": 0.7577114303773054,
+    "std_f1": 0.02248148805995313,
+    "n_seeds": 5
+  },
+  "lstm_h5": {
+    "model": "lstm",
+    "hidden": 5,
+    "n_params": 236,
+    "mean_f1": 0.7726019865269668,
+    "std_f1": 0.04494091616292672,
+    "n_seeds": 5
+  },
+  "lstm_h6": {
+    "model": "lstm",
+    "hidden": 6,
+    "n_params": 306,
+    "mean_f1": 0.8343579678862714,
+    "std_f1": 0.06530787973748764,
+    "n_seeds": 5
+  },
+  "lstm_h8": {
+    "model": "lstm",
+    "hidden": 8,
+    "n_params": 470,
+    "mean_f1": 0.8519719759320118,
+    "std_f1": 0.03485455531022108,
+    "n_seeds": 5
+  },
+  "lstm_h10": {
+    "model": "lstm",
+    "hidden": 10,
+    "n_params": 666,
+    "mean_f1": 0.8375608486745371,
+    "std_f1": 0.03741284710967377,
+    "n_seeds": 5
+  },
+  "lstm_h12": {
+    "model": "lstm",
+    "hidden": 12,
+    "n_params": 894,
+    "mean_f1": 0.8640406565934949,
+    "std_f1": 0.03803698362685613,
+    "n_seeds": 5
+  }
+}

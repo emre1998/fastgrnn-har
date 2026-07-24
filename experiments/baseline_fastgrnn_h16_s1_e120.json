@@ -1,0 +1,20 @@
+{
+  "model": "fastgrnn",
+  "hidden": 16,
+  "seed": 1,
+  "epochs": 120,
+  "lr": 0.001,
+  "n_params": 440,
+  "best_epoch": 108,
+  "best_val_f1": 0.9389100195431582,
+  "test_accuracy": 0.890850250073551,
+  "test_macro_f1": 0.8899648990328752,
+  "per_class_f1": {
+    "WALKING": 0.8934198331788693,
+    "UPSTAIRS": 0.8640552995391705,
+    "DOWNSTAIRS": 0.906284454244763,
+    "SITTING": 0.8183873398643556,
+    "STANDING": 0.8591439688715953,
+    "LAYING": 0.9984984984984985
+  }
+}

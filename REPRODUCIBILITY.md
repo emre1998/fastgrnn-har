@@ -183,6 +183,20 @@ Still open: which set becomes canonical. The re-run is the only one produced und
 a documented configuration, which argues for it — but that decision replaces
 published numbers and is not one to make silently.
 
+## Where this stands
+
+The device is now pinned to CPU in all four scripts that used to take the GPU, and
+`run_cpu_reproduce.py` will regenerate Tier-1 and the Pareto sweep under it. That
+run has **not happened yet**: this torch build maps ~2.2 GB of CUDA libraries per
+worker even for a CPU-only run, and the machine did not have the virtual memory
+free. It is queued, not cancelled.
+
+Until it runs, `experiments/` still holds the GPU-era Tier-1 and Pareto numbers,
+with copies in `experiments/archive_gpu/` as the before-picture. The repository is
+self-consistent in the meantime — the committed figures were built from those files
+and regenerate from them cleanly. What is not yet true is the claim that every
+software result came from one device; that becomes true when the re-run completes.
+
 ## Open items
 
 - [x] Pin thread count in run scripts; stamp environment into result JSONs.
