@@ -2,7 +2,7 @@
 
 Every committed software result was re-run at the same seed and configuration in the
 current environment. Code: `run_drift_probe.py`, comparison: `analyze_drift.py`.
-28 paired measurements, 3 datasets x 3 compression routes x 2 seeds.
+30 paired measurements, 3 datasets x 3 compression routes x 2 seeds.
 
 ## Headline
 
@@ -19,7 +19,8 @@ FastGRNN and shrink-H routes reproduce **bit-exactly** on HAPT and WISDM:
 | GRU shrink-H | 0.0000 | 0.0000 |
 | LSTM shrink-H | 0.0000 | 0.0000 |
 
-Twelve measurements, all exactly zero drift. Median |drift| over all 28 pairs is 0.0118.
+Twelve measurements, all exactly zero drift. Over all 30 pairs the median |drift| is
+0.0151; every non-zero entry belongs either to the pruned route or to PAMAP2.
 
 An earlier probe that appeared to show non-reproducibility (HAPT GRU 0.9094 -> 0.9200)
 was itself the artifact: it ran with the default multi-threaded BLAS. The committed
@@ -63,8 +64,19 @@ Drift is never zero on this route, on any dataset:
 |---|---|---|
 | HAPT GRU pruned | -0.0261 | +0.0012 |
 | HAPT LSTM pruned | **+0.2479** | +0.0285 |
-| WISDM GRU pruned | -0.0360 | -- |
-| WISDM LSTM pruned | **-0.2678** | -- |
+| WISDM GRU pruned | -0.0360 | -0.0607 |
+| WISDM LSTM pruned | **-0.2678** | +0.0343 |
+| PAMAP2 GRU pruned | -0.0145 | -0.0230 |
+| PAMAP2 LSTM pruned | **+0.1421** | +0.0090 |
+
+One sub-pattern is worth separating from the noise. **WISDM GRU pruned drifts
+downward on both seeds** (-0.036, -0.061), and that is the exact number the
+equal-byte comparison rests on: it is the GRU's winning route on WISDM, committed
+at a 5-seed mean of 0.7671 against FastGRNN's 0.7997. If the remaining three seeds
+move the same way, the baseline lands near 0.72 and FastGRNN's margin grows from
++0.033 to roughly +0.08. Two seeds are not enough to claim that, but the direction
+means the committed WISDM comparison is, if anything, **too generous to the
+baseline** rather than flattering to us.
 
 This is not new information: the committed 5-seed standard deviations for this route
 were already extreme (WISDM LSTM pruned +/-0.184, PAMAP2 +/-0.169). The re-runs confirm

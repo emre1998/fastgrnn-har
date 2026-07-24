@@ -1,0 +1,21 @@
+{
+  "model": "gru_pruned",
+  "hidden": 16,
+  "seed": 1,
+  "cell_nonzero": 181,
+  "head": 102,
+  "total_nonzero": 283,
+  "best_epoch": 71,
+  "best_val_f1": 0.5807782848099352,
+  "test_accuracy": 0.7688876097280184,
+  "test_macro_f1": 0.6917899828477568,
+  "q15_macro_f1": 0.6918885386565892,
+  "per_class_f1": {
+    "Walking": 0.8383602577271454,
+    "Jogging": 0.8772763262074426,
+    "Upstairs": 0.49737735266892935,
+    "Downstairs": 0.25876543209876546,
+    "Sitting": 0.8643954575818303,
+    "Standing": 0.8145650708024275
+  }
+}
