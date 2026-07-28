@@ -6,16 +6,27 @@
   "head": 102,
   "total_nonzero": 283,
   "best_epoch": 188,
-  "best_val_f1": 0.9455452872917977,
-  "test_accuracy": 0.9043836422477199,
-  "test_macro_f1": 0.9043522257659647,
-  "q15_macro_f1": 0.9043522257659647,
+  "best_val_f1": 0.9406950852771634,
+  "test_accuracy": 0.9152691968225949,
+  "test_macro_f1": 0.9188418425233836,
+  "q15_macro_f1": 0.9185770530173955,
   "per_class_f1": {
-    "WALKING": 0.901077375122429,
-    "WALKING_UPSTAIRS": 0.8693957115009746,
-    "WALKING_DOWNSTAIRS": 0.9457013574660633,
-    "SITTING": 0.8625093914350113,
-    "STANDING": 0.8474295190713101,
-    "LAYING": 1.0
+    "WALKING": 0.9600760456273765,
+    "WALKING_UPSTAIRS": 0.9072781655034895,
+    "WALKING_DOWNSTAIRS": 0.9757174392935982,
+    "SITTING": 0.8534151957022257,
+    "STANDING": 0.8592471358428805,
+    "LAYING": 0.9573170731707317
+  },
+  "env": {
+    "threads": 1,
+    "python": "3.13.1",
+    "platform": "Windows-11-10.0.26200-SP0",
+    "git_commit": "480ce8a",
+    "torch": "2.6.0+cu124",
+    "threads_torch": 1,
+    "device": "cpu",
+    "cuda_available": false,
+    "numpy": "2.4.6"
   }
 }

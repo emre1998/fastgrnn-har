@@ -1,0 +1,27 @@
+{
+  "model": "gru_pruned",
+  "hidden": 16,
+  "seed": 1,
+  "cell_nonzero": 181,
+  "head": 204,
+  "total_nonzero": 385,
+  "best_epoch": 200,
+  "best_val_f1": 0.4468853692976353,
+  "test_accuracy": 0.4310841061720499,
+  "test_macro_f1": 0.34067753953397967,
+  "q15_macro_f1": 0.34067753953397967,
+  "per_class_f1": {
+    "lying": 0.4896265560165975,
+    "sitting": 0.27,
+    "standing": 0.8,
+    "walking": 0.6057142857142858,
+    "running": 0.12631578947368421,
+    "cycling": 0.5726587728740581,
+    "Nordic_walking": 0.14507772020725387,
+    "ascending_stairs": 0.178743961352657,
+    "descending_stairs": 0.04472843450479233,
+    "vacuum_cleaning": 0.3696682464454976,
+    "ironing": 0.48559670781893005,
+    "rope_jumping": 0.0
+  }
+}

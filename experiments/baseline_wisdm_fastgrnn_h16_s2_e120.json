@@ -5,16 +5,30 @@
   "epochs": 120,
   "lr": 0.001,
   "n_params": 440,
-  "best_epoch": 11,
-  "best_val_f1": 0.6694075077540272,
-  "test_accuracy": 0.7533458051518204,
-  "test_macro_f1": 0.687148711183356,
+  "best_epoch": 25,
+  "best_val_f1": 0.6622696825879809,
+  "test_accuracy": 0.7465822420492157,
+  "test_macro_f1": 0.7022821792089347,
   "per_class_f1": {
-    "Walking": 0.8117194102732651,
-    "Jogging": 0.8945738212687852,
-    "Upstairs": 0.4142857142857143,
-    "Downstairs": 0.2376237623762376,
-    "Sitting": 0.909933774834437,
-    "Standing": 0.8547557840616966
+    "Walking": 0.7968558595345039,
+    "Jogging": 0.8938328530259366,
+    "Upstairs": 0.43461660833598476,
+    "Downstairs": 0.4099653106275623,
+    "Sitting": 0.8671140939597315,
+    "Standing": 0.8113083497698882
+  },
+  "env": {
+    "threads": 1,
+    "python": "3.13.1",
+    "platform": "Windows-11-10.0.26200-SP0",
+    "git_commit": "0b37bd9",
+    "torch": "2.6.0+cu124",
+    "threads_torch": 1,
+    "device": "cpu",
+    "cuda_available": true,
+    "gpu": "NVIDIA GeForce RTX 3060 Laptop GPU",
+    "tf32_matmul": false,
+    "tf32_cudnn": true,
+    "numpy": "2.4.6"
   }
 }

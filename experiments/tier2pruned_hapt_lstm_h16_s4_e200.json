@@ -5,17 +5,28 @@
   "cell_nonzero": 181,
   "head": 102,
   "total_nonzero": 283,
-  "best_epoch": 193,
-  "best_val_f1": 0.7641669776284324,
-  "test_accuracy": 0.8346572521329803,
-  "test_macro_f1": 0.8228006546751164,
-  "q15_macro_f1": 0.8228006546751164,
+  "best_epoch": 163,
+  "best_val_f1": 0.8410614654512911,
+  "test_accuracy": 0.7955280964989703,
+  "test_macro_f1": 0.7721223524751183,
+  "q15_macro_f1": 0.7721223524751183,
   "per_class_f1": {
-    "WALKING": 0.6868686868686869,
-    "WALKING_UPSTAIRS": 0.6715151515151515,
-    "WALKING_DOWNSTAIRS": 0.8150943396226416,
-    "SITTING": 0.8845855925639039,
-    "STANDING": 0.878740157480315,
-    "LAYING": 1.0
+    "WALKING": 0.6434782608695652,
+    "WALKING_UPSTAIRS": 0.5013550135501355,
+    "WALKING_DOWNSTAIRS": 0.7811447811447811,
+    "SITTING": 0.8542944785276073,
+    "STANDING": 0.865814696485623,
+    "LAYING": 0.9866468842729971
+  },
+  "env": {
+    "threads": 1,
+    "python": "3.13.1",
+    "platform": "Windows-11-10.0.26200-SP0",
+    "git_commit": "480ce8a",
+    "torch": "2.6.0+cu124",
+    "threads_torch": 1,
+    "device": "cpu",
+    "cuda_available": false,
+    "numpy": "2.4.6"
   }
 }

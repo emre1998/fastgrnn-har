@@ -10,9 +10,9 @@ Every figure is labelled **M** measured on the device, **D** derived from two me
 
 | Cell | Equal capacity, H=16 | Equal byte budget | Route at the budget | Deployed config |
 |---|---|---|---|---|
-| GRU | 0.917 ± 0.013 | 0.902 ± 0.026 | pruned-H | 0.9153 |
-| LSTM | 0.886 ± 0.027 | 0.844 ± 0.025 | shrink-H | 0.8176 |
-| FastGRNN | 0.864 ± 0.018 | 0.869 ± 0.081 | low-rank + IHT + Q15 | 0.9134 |
+| GRU | 0.905 ± 0.029 | 0.901 ± 0.028 | pruned-H | 0.9153 |
+| LSTM | 0.884 ± 0.024 | 0.844 ± 0.025 | shrink-H | 0.8176 |
+| FastGRNN | 0.860 ± 0.026 | 0.869 ± 0.081 | low-rank + IHT + Q15 | 0.9134 |
 
 The two regimes disagree, and that disagreement is the point: at equal hidden size the GRU is the better cell, while at a fixed byte budget each cell is compressed by whatever route suits it. The deployed column is a single configuration (seed 0), reported alongside the distributions rather than instead of them.
 
@@ -47,8 +47,8 @@ Only one column passes. Table-based activations alone are not sufficient, and a 
 
 | | Best cell | By what margin |
 |---|---|---|
-| Accuracy, equal capacity | GRU | 0.031 over LSTM |
-| Accuracy, equal byte | GRU | 0.033 over FastGRNN |
+| Accuracy, equal capacity | GRU | 0.020 over LSTM |
+| Accuracy, equal byte | GRU | 0.031 over FastGRNN |
 | Bench latency | GRU | 0.254 ms over LSTM |
 | Energy per window | GRU | 0.5 mJ over LSTM |
 | End-to-end with sensor | GRU | 0.97 ms over LSTM |

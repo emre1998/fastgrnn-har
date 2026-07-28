@@ -7,16 +7,16 @@
     "gru": {
       "shrink_mean": 0.8799553767305094,
       "shrink_std": 0.04349634677689257,
-      "pruned_mean": 0.9023345011129047,
-      "pruned_std": 0.02632460143487074,
+      "pruned_mean": 0.9008557181745047,
+      "pruned_std": 0.027803680291075317,
       "best_route": "pruned",
-      "best_mean": 0.9023345011129047
+      "best_mean": 0.9008557181745047
     },
     "lstm": {
       "shrink_mean": 0.8437077954539566,
       "shrink_std": 0.025010132174140026,
-      "pruned_mean": 0.7531191085765766,
-      "pruned_std": 0.1028564661788353,
+      "pruned_mean": 0.8174502449656869,
+      "pruned_std": 0.036029692476302035,
       "best_route": "shrink",
       "best_mean": 0.8437077954539566
     },
@@ -30,16 +30,16 @@
     "gru": {
       "shrink_mean": 0.6826980858440235,
       "shrink_std": 0.044615473959461235,
-      "pruned_mean": 0.7670842280386257,
-      "pruned_std": 0.011147041673297452,
+      "pruned_mean": 0.732462686137166,
+      "pruned_std": 0.026726568206205895,
       "best_route": "pruned",
-      "best_mean": 0.7670842280386257
+      "best_mean": 0.732462686137166
     },
     "lstm": {
       "shrink_mean": 0.6735173813794375,
       "shrink_std": 0.014715396536725347,
-      "pruned_mean": 0.6166283413413374,
-      "pruned_std": 0.18361301687762246,
+      "pruned_mean": 0.5590692346196068,
+      "pruned_std": 0.16550218810069559,
       "best_route": "shrink",
       "best_mean": 0.6735173813794375
     },
@@ -53,16 +53,16 @@
     "gru": {
       "shrink_mean": 0.35387958942325104,
       "shrink_std": 0.03207966082182887,
-      "pruned_mean": 0.3391564354410824,
-      "pruned_std": 0.026172190901564567,
+      "pruned_mean": 0.3187553756693181,
+      "pruned_std": 0.0223281474325254,
       "best_route": "shrink",
       "best_mean": 0.35387958942325104
     },
     "lstm": {
       "shrink_mean": 0.3055734732720254,
       "shrink_std": 0.028773925706128623,
-      "pruned_mean": 0.16937180609471097,
-      "pruned_std": 0.05127117574146283,
+      "pruned_mean": 0.24187838574562032,
+      "pruned_std": 0.0303770442277555,
       "best_route": "shrink",
       "best_mean": 0.3055734732720254
     },

@@ -129,7 +129,10 @@ def evaluate(model, loader):
 
 def train_one(kind, seed, epochs, lr, hidden):
     Path("experiments").mkdir(exist_ok=True)
-    out = f"experiments/baseline_{TAG}_{kind}_h{hidden}_s{seed}_e{epochs}.json"
+    # HAPT is the untagged default across the pipeline (analyze_tier1_multi,
+    # make_figures expect baseline_{cell}_...), other datasets carry their tag.
+    _pfx = "" if TAG == "hapt" else f"{TAG}_"
+    out = f"experiments/baseline_{_pfx}{kind}_h{hidden}_s{seed}_e{epochs}.json"
     if Path(out).exists():
         with open(out) as f:
             result = json.load(f)

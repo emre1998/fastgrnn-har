@@ -38,10 +38,16 @@ SEEDS = [0, 1, 2, 3, 4]
 # the pagefile; three did not.
 WORKERS = 3
 
+ALL_CELLS = ["fastgrnn", "gru", "lstm"]
+
 ap = argparse.ArgumentParser()
 ap.add_argument("--only", choices=["tier1", "pareto"], default=None)
+ap.add_argument("--cells", nargs="+", default=ALL_CELLS,
+                help="subset of cells to run -- each trains independently, so a "
+                     "divide-and-conquer split does not change any result")
 ap.add_argument("--workers", type=int, default=WORKERS)
 args = ap.parse_args()
+CELLS = [c for c in ALL_CELLS if c in args.cells]
 
 jobs = []
 
@@ -51,16 +57,16 @@ if args.only in (None, "tier1"):
         tag = None if ds == "hapt" else ds        # hapt writes unprefixed names
         for seed in SEEDS:
             cmd = [PY, "run_baseline_tier1.py", "--data", path,
-                   "--seeds", str(seed), "--models", "fastgrnn", "gru", "lstm"]
+                   "--seeds", str(seed), "--models", *CELLS]
             if tag:
                 cmd += ["--tag", tag]
-            jobs.append((f"tier1/{ds}/s{seed}", cmd))
+            jobs.append((f"tier1/{'-'.join(CELLS)}/{ds}/s{seed}", cmd))
 
 # --- Pareto sweep: HAPT only, several hidden sizes per cell ----------------
 if args.only in (None, "pareto"):
     GRID = {"fastgrnn": [8, 12], "gru": [4, 5, 6, 8, 10, 12],
             "lstm": [4, 5, 6, 8, 10, 12]}
-    for cell, hiddens in GRID.items():
+    for cell, hiddens in ((c, GRID[c]) for c in CELLS):
         for h in hiddens:
             for seed in SEEDS:
                 jobs.append((f"pareto/{cell}/h{h}/s{seed}",

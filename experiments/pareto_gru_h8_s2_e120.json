@@ -4,6 +4,20 @@
   "seed": 2,
   "n_params": 366,
   "best_epoch": 52,
-  "test_accuracy": 0.8790820829655781,
-  "test_macro_f1": 0.8761158511075656
+  "test_accuracy": 0.884377758164166,
+  "test_macro_f1": 0.881995057209687,
+  "env": {
+    "threads": 1,
+    "python": "3.13.1",
+    "platform": "Windows-11-10.0.26200-SP0",
+    "git_commit": "0b37bd9",
+    "torch": "2.6.0+cu124",
+    "threads_torch": 1,
+    "device": "cpu",
+    "cuda_available": true,
+    "gpu": "NVIDIA GeForce RTX 3060 Laptop GPU",
+    "tf32_matmul": false,
+    "tf32_cudnn": true,
+    "numpy": "2.4.6"
+  }
 }

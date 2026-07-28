@@ -183,19 +183,48 @@ Still open: which set becomes canonical. The re-run is the only one produced und
 a documented configuration, which argues for it — but that decision replaces
 published numbers and is not one to make silently.
 
-## Where this stands
+## One device — done
 
-The device is now pinned to CPU in all four scripts that used to take the GPU, and
-`run_cpu_reproduce.py` will regenerate Tier-1 and the Pareto sweep under it. That
-run has **not happened yet**: this torch build maps ~2.2 GB of CUDA libraries per
-worker even for a CPU-only run, and the machine did not have the virtual memory
-free. It is queued, not cancelled.
+The device is pinned to CPU in every training script, and the full campaign has been
+regenerated on it: Tier-1 (45 runs), the Pareto sweep (70 runs), and the pruned route
+(30 runs, promoted from the V2 tag). Every result JSON now carries `env.device = cpu`,
+`env.threads = 1`, and the torch/commit stamp. The GPU-era files are preserved in
+`experiments/archive_gpu/` as the before-picture. **The claim that every software
+result came from one device is now true.**
 
-Until it runs, `experiments/` still holds the GPU-era Tier-1 and Pareto numbers,
-with copies in `experiments/archive_gpu/` as the before-picture. The repository is
-self-consistent in the meantime — the committed figures were built from those files
-and regenerate from them cleanly. What is not yet true is the claim that every
-software result came from one device; that becomes true when the re-run completes.
+Both headline findings survive the move from GPU to CPU:
+
+**Equal capacity (Tier-1) — GRU still wins all three:**
+
+| | GPU-era GRU | CPU GRU | winner |
+|---|---|---|---|
+| HAPT | 0.917 | 0.905 | GRU (both) |
+| WISDM | 0.764 | 0.772 | GRU (both) |
+| PAMAP2 | 0.389 | 0.327 | GRU (both) |
+
+**Equal byte budget — the ranking still reverses, and WISDM's margin grows:**
+
+| | GPU-era margin | CPU margin | winner |
+|---|---|---|---|
+| HAPT | GRU $+0.033$ | GRU $+0.032$ | GRU (both) |
+| WISDM | FastGRNN $+0.033$ | FastGRNN $+0.068$ | FastGRNN (both) |
+| PAMAP2 | FastGRNN $+0.090$ | FastGRNN $+0.090$ | FastGRNN (both) |
+
+FastGRNN wins 2 of 3 at the byte budget under both devices. WISDM's margin doubling is
+the same effect the pruned re-run showed: the FastGRNN side reproduces bit-exactly, so
+the change is entirely on the baseline side — the GPU-era comparison was too generous to
+the baseline, not to us. No winner changes; PAMAP2 remains reported-not-ranked.
+
+### Two operational notes for anyone reproducing this
+
+- **Pagefile.** This torch build reserves ~1.8 GB of commit charge per process at import
+  (its CUDA libraries) even on a CPU-only run. Parallel reproduction needs the pagefile
+  sized for it: a small on-demand pagefile fails under the simultaneous commit of several
+  workers (`WinError 1455`). A 16 GB initial pagefile ran six workers comfortably.
+- **HAPT is untagged.** `run_baseline_tier1.py` writes HAPT results without a dataset
+  prefix (`baseline_{cell}_...`); WISDM and PAMAP2 carry theirs. The analysis scripts and
+  figures expect exactly this. A run that tags HAPT produces files the pipeline silently
+  skips over — fixed so the tag is dropped for HAPT.
 
 ## Open items
 
