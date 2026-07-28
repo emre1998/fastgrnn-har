@@ -1,5 +1,28 @@
 # Reproducibility audit (2026-07-24)
 
+## Environment of record
+
+All software results were produced on one machine, on CPU, with the thread count
+pinned to 1:
+
+| | |
+|---|---|
+| CPU | AMD Ryzen 7 6800H (8 cores / 16 threads) |
+| RAM | 23.2 GB |
+| OS | Windows 11 Pro (10.0.26200) |
+| Python | 3.13.1 |
+| PyTorch | 2.6.0+cu124 (run on CPU) |
+| NumPy | 2.4.6 |
+| Threads | 1 (`repro.pin_threads()`) |
+
+Every result JSON carries an `env` block with the thread count, torch version,
+platform, processor, and git commit, so any file can be checked for comparability.
+Bit-exact reproduction is expected on the same CPU family with these settings;
+across a different CPU the determinism recipe (CPU, one thread, same seeds and
+versions) holds, though the last bits may differ.
+
+
+
 Every committed software result was re-run at the same seed and configuration in the
 current environment. Code: `run_drift_probe.py`, comparison: `analyze_drift.py`.
 30 paired measurements, 3 datasets x 3 compression routes x 2 seeds.

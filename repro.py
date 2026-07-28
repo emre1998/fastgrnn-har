@@ -91,6 +91,7 @@ def env_stamp() -> dict:
         "threads": int(os.environ.get("OMP_NUM_THREADS", DEFAULT_THREADS)),
         "python": platform.python_version(),
         "platform": platform.platform(),
+        "processor": platform.processor(),   # CPU family; determinism is per-CPU
         "git_commit": _git_commit(),
     }
     try:
