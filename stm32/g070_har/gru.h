@@ -16,6 +16,15 @@
 #ifndef GRU_H
 #define GRU_H
 
+// Single source of truth for the LUT knob. Both this cell (gru.cpp) and the
+// firmware banner (main.cpp) include gru.h, so one #define drives both — a
+// per-file #define in main.cpp would NOT reach gru.cpp (separate TU) and the
+// model would silently keep the default while the banner claimed otherwise.
+// Override at build time with -DUSE_LUT=0 for the no-LUT latency row.
+#ifndef USE_LUT
+#define USE_LUT 1
+#endif
+
 #include <stdint.h>
 #include "model_weights.h"   // defines HIDDEN_SIZE, INPUT_DIM, NUM_CLASSES, WINDOW_T
 

@@ -1,97 +1,82 @@
-# STM32G070RB — cross-platform validation (Phase 1–3)
+# STM32G070RB — cross-platform validation (E5)
 
-The portability minimum (output-equivalence + latency + memory) needs **only the
-USB cable**. The on-board ST-LINK supplies power, flashing, and the virtual COM
-port (UART) over that one cable — no breadboard, no INA226, no sensor.
+Third architecture class for the portability story: after Arduino Uno (AVR 8-bit) and
+MSP430G2553 (16-bit), the Nucleo-G070RB (ARM Cortex-M0+, 32-bit, hardware multiplier).
+Results and analysis: [E5_RESULTS.md](E5_RESULTS.md).
 
-Board facts (Nucleo-G070RB): user LED **LD4 = PA5**; virtual COM = **USART2
-(PA2/PA3)**; ST-LINK/V2-1 embedded.
+The portability minimum (output-equivalence + latency + memory) needs **only the USB
+cable** — the on-board ST-LINK supplies power, flashing, and the virtual COM port (UART)
+over that one cable. No breadboard, no sensor.
 
-The model files here (`gru.cpp`, `gru.h`, `lut.h`, `model_weights.h`) are the MSP430
-deployment build **byte-for-byte unchanged** — that identity is the whole point of
-the check. They compile as **C++**, exactly as the MSP430 build did (the weight
-tables in `model_weights.h` rely on C++ const internal linkage). A host pre-flight
-already confirms `gru.cpp` produces `C_PRED = [4, 1, 4, 5, 1]` on these windows, so
+## What actually built this (not HAL/CubeMX)
+
+CubeIDE 2.2.0 here has **no CubeMX / board wizard**, so the firmware is **bare-metal,
+register-level** — no HAL, no `.ioc`. The whole application is one file, [`main.cpp`](main.cpp),
+which pokes RCC + GPIOA + USART2 + SysTick directly (raw addresses, see the file header).
+Bring-up was staged: LED blink → raw USART2 banner → model. `app.cpp`/`app.h` are an earlier
+HAL-based scaffold, **superseded** and kept only for reference — the flashed firmware is
+`main.cpp`.
+
+The model files (`gru.cpp`, `gru.h`, `lut.h`, `model_weights.h`, and the LSTM/FastGRNN
+equivalents) are the MSP430 deployment build **byte-for-byte unchanged** — that identity is the
+whole point. They compile as **C++** (the Q15 tables in `model_weights.h` rely on C++ const
+internal linkage). A host pre-flight (`g++`) confirms each cell's `C_PRED` before any flash, so
 when the G070 prints the same, the only variable that changed is the silicon.
 
----
+## Build it (per cell)
 
-## Phase 0 — install (one-time)
+1. CubeIDE → **File → New → STM32 Project** → **Empty Project** for the NUCLEO-G070RB, language
+   **C++**. (No peripheral init — we do it in `main.cpp`.)
+2. Put into the project: `main.cpp` + the cell's `<cell>.cpp` → `Core/Src`; the cell's
+   `<cell>.h`, `model_weights.h`, `lut.h`, and `test_windows.h` → `Core/Inc`. **Exactly one**
+   `model_weights.h` / `lut.h` may be present (shared filename + include guard + colliding `const`
+   arrays), so keep only the current cell's set.
+3. **Project → Build**. Clean build, no HAL.
+4. **Run → Run** (flashes over ST-LINK). Open a serial monitor at **115200** on the VCP COM port.
 
-Install **STM32CubeIDE** (free, from ST). Plug the board in via USB; Windows should
-enumerate an ST-LINK and a "STMicroelectronics STLink Virtual COM Port" — note its
-COM number (Device Manager → Ports).
+Expected output:
+```
+=== STM32G070RB HAR - cross-platform validation ===
+cell=GRU  H=6  clock=16MHz  USE_LUT=1
+[equivalence] ...
+  window 0..4: G070=X  host-C=X  OK
+[equivalence] 5/5  -> CROSS-PLATFORM IDENTICAL
+[latency] window ~926 ms   per-step ~7.239 ms
+[latency] real-time @50Hz (step<20ms): OK
+done.
+```
 
-## Phase 1 — create the project
+## Switching cells (GRU ↔ LSTM ↔ FastGRNN)
 
-1. CubeIDE → **File → New → STM32 Project**.
-2. **Board Selector** tab → search **NUCLEO-G070RB** → select it → **Next**.
-   Name it `g070_har`, and set **Targeted Language = C++** (the model compiles as
-   C++; if you forget, you can right-click the project → **Convert to C++** later).
-   **Finish**. When asked "initialize peripherals to default mode?", answer
-   **Yes** — this auto-configures the clock, LD4 (PA5), and USART2 as the VCP.
-3. In the `.ioc` view, confirm:
-   - **USART2** = Asynchronous, **115200** baud, 8N1 (it is the VCP).
-   - **PA5** = GPIO_Output (labelled LD4).
-   - SysTick is on by default (HAL time base — we use `HAL_GetTick()`).
-   - *(optional)* Clock Configuration → set HCLK to **64 MHz**; the default HSI
-     16 MHz also works, and the banner prints whichever is active.
-4. **Project → Generate Code** (or Ctrl+S on the `.ioc`).
+`main.cpp` is cell-agnostic except for four things:
+1. the cell header include — `#include "gru.h"` → `lstm.h` / `fastgrnn.h`
+2. the three calls — `gru_reset/step/predict` → `lstm_*` / `fastgrnn_*`
+3. the banner string — `cell=GRU`
+4. `test_windows.h` line for `C_PRED[]` — set to that cell's host reference:
+   **GRU `{4,1,4,5,1}` · LSTM `{4,0,4,5,0}` · FastGRNN `{4,2,4,5,1}`** (they differ on the
+   confusable walking/stairs windows 1 and 4 — each cell must use its own reference or the
+   equivalence check reports a false MISMATCH).
 
-## Phase 2 — add the model + app code
+Then swap the cell's `*.cpp/*.h/model_weights.h/lut.h` in the project and rebuild.
 
-5. Copy into the generated project:
-   - `gru.cpp`, `app.cpp` → `Core/Src/`
-   - `gru.h`, `lut.h`, `model_weights.h`, `test_windows.h`, `app.h` → `Core/Inc/`
-6. Open `Core/Src/main.c` and add, in the marked user regions only:
-   ```c
-   /* USER CODE BEGIN Includes */
-   #include "app.h"
-   /* USER CODE END Includes */
-   ```
-   ```c
-   /* USER CODE BEGIN 2 */
-   app_run();                 /* never returns */
-   /* USER CODE END 2 */
-   ```
-   (`USER CODE BEGIN 2` sits right after `MX_USART2_UART_Init()`.)
-7. **Project → Build** (Ctrl+B). It should build clean. `gru.h` has `extern "C"`
-   guards, so the C++ model links cleanly with the C `main.c`.
+FastGRNN's header uses different macro names internally (`WINDOW_LEN`, `INPUT_CHANNELS`,
+`HIDDEN_STATE_SIZE`) but its `model_weights.h` still exports `HIDDEN_SIZE`/`WINDOW_T`/`INPUT_DIM`,
+which is what `main.cpp` uses — so no renames are needed in `main.cpp`.
 
-## Phase 3 — flash and read
+## The LUT knob and the no-LUT row
 
-8. **Run → Run** (flashes over ST-LINK).
-9. Open a serial monitor at **115200** on the VCP COM port (CubeIDE has one:
-   Window → Show View → Console → the "Open a Terminal" / or use PuTTY/TeraTerm).
-10. You should see:
-    ```
-    === STM32G070RB HAR - cross-platform validation ===
-    cell=GRU  H=6  clock=64MHz  USE_LUT=1
-    [equivalence] G070 prediction must equal C_PRED (host-C reference):
-      window 0: G070=4  host-C=4  OK
-      window 1: G070=1  host-C=1  OK
-      window 2: G070=4  host-C=4  OK
-      window 3: G070=5  host-C=5  OK
-      window 4: G070=1  host-C=1  OK
-    [equivalence] 5/5 match  ->  CROSS-PLATFORM IDENTICAL
-    [latency] per-step ~X.XXX ms   window ~XXX ms
-    [latency] real-time @50Hz (step < 20 ms): OK
-    done. LED now blinks ...
-    ```
+`USE_LUT` lives in **one place per cell — the cell header** (`gru.h`/`lstm.h`/`fastgrnn.h`,
+`#ifndef USE_LUT / #define USE_LUT 1`). Both the model `.cpp` and `main.cpp`'s banner include that
+header, so one edit drives both. **Do not** `#define USE_LUT` in `main.cpp`: it would not reach the
+cell `.cpp` (separate translation unit), the model would keep the default while the banner claimed
+otherwise, and both builds come out byte-identical (this trap cost time during bring-up).
 
-**Expected equivalence:** `C_PRED = [4, 1, 4, 5, 1]`. Five OKs means G070 == host-C,
-and since MSP430 also matches host-C, G070 == MSP430 — the cross-platform result.
+For the no-LUT latency row: flip the cell header to `#define USE_LUT 0`, then **Project → Clean →
+Build** (a full rebuild — an incremental build does not recompile the cell `.cpp`), reflash.
 
-## Latency rows and memory
+## Memory
 
-- **no-LUT row:** Project → Properties → C/C++ Build → Settings → Preprocessor →
-  add symbol `USE_LUT=0`, rebuild, reflash. The banner will show `USE_LUT=0`.
-- **memory footprint:** after a build, CubeIDE prints the linker summary
-  (`text` / `data` / `bss`) in the Console; Flash = text+data, RAM = data+bss.
-  Record it per cell.
-
-## Other cells (LSTM, FastGRNN)
-
-Same steps with that cell's files (to be copied when we get there). GRU first
-because it is the smallest and is the one already deployed on the MSP430, so the
-equivalence reference is exact.
+After a build the Console's `arm-none-eabi-size` line gives `text data bss`:
+**Flash = text + data, RAM = data + bss.** Record per cell (see E5_RESULTS.md). Note this is a
+validation build (embeds test windows + harness); the authoritative deployment footprint is the
+MSP430 production number.
